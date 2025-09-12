@@ -1,9 +1,4 @@
-// Logout route
-router.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.redirect('/auth/login');
-  });
-});
+
 // routes/auth.js
 import express from 'express';
 import bcrypt from 'bcrypt';
@@ -74,6 +69,13 @@ router.post('/login', async (req, res) => {
         currentPage: 'login'
       });
   }
+});
+
+// Logout route
+router.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/auth/login');
+  });
 });
 
 // Registration form (admin only)
