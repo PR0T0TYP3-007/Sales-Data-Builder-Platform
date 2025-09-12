@@ -1,0 +1,102 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Enrichment Progress</div>
+</div>
+        </div>
+</div>
+    <div style="margin-bottom:2rem; text-align:center;">
+        <button class="btn btn-success" id="bulk-enrich-btn">Enrich All Companies</button>
+        <button class="btn btn-primary" id="enrich-selected-btn">Enrich Selected</button>
+        <span id="enrich-status" style="margin-left:1rem;"></span>
+    </div>
+    <div class="card-header">Company Enrichment Status</div>
+        <div class="card-body">
+        <div class="table-container" style="max-width: 1100px; margin: 0 auto 2rem auto; padding-left: 20px; padding-right: 20px;">
+    <table class="table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all-companies"></th>
+                    <th>Name</th>
+                    <th>Website</th>
+                    <th>Socials</th>
+                    <th>Industry</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% companies.forEach(function(company) { %>
+                    <tr data-id="<%= company.id %>">
+                        <td><input type="checkbox" class="company-checkbox" value="<%= company.id %>"></td>
+                        <td><%= company.name %></td>
+                        <td><a href="<%= company.website %>" target="_blank"><%= company.website %></a></td>
+                        <td>
+                            <% if (company.socials) { %>
+                                <% Object.keys(company.socials).forEach(function(key) { %>
+                                    <a href="<%= company.socials[key] %>" class="social-link" target="_blank"><i class="fab fa-<%= key %>"></i></a>
+                                <% }) %>
+                            <% } %>
+                        </td>
+                        <td><%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></td>
+                        <td><span class="status-badge status-<%= company.status %>"><%= company.status %></span></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+    </table>
+    </div>
+
+    </div>
+</div>
+
+<!-- Buttons moved to top of page -->
+<script>
+    // Select all checkboxes
+    document.getElementById('select-all-companies').addEventListener('change', function() {
+        const checked = this.checked;
+        document.querySelectorAll('.company-checkbox').forEach(cb => cb.checked = checked);
+    });
+
+    // Enrich All Companies (existing logic)
+    document.getElementById('bulk-enrich-btn').addEventListener('click', function() {
+        enrichCompanies(Array.from(document.querySelectorAll('tbody tr')).map(row => row.getAttribute('data-id')).filter(Boolean), this);
+    });
+
+    // Enrich Selected Companies
+    document.getElementById('enrich-selected-btn').addEventListener('click', function() {
+        const selected = Array.from(document.querySelectorAll('.company-checkbox:checked')).map(cb => cb.value);
+    console.log('Selected for enrichment:', selected);
+    // Debug: show outgoing payload
+    console.log('Sending payload:', JSON.stringify({ companyIds: selected }));
+        if (selected.length === 0) {
+            document.getElementById('enrich-status').textContent = 'Please select at least one company.';
+            return;
+        }
+        enrichCompanies(selected, this);
+    });
+
+    function enrichCompanies(companyIds, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Enriching...';
+        document.getElementById('enrich-status').textContent = '';
+        fetch('/enrich', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ companyIds })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('enrich-status').textContent = 'Enrichment complete! Refreshing...';
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                document.getElementById('enrich-status').textContent = 'Error: ' + (data.error || 'Failed to enrich.');
+                btn.disabled = false;
+                btn.textContent = btn.id === 'bulk-enrich-btn' ? 'Enrich All Companies' : 'Enrich Selected';
+            }
+        })
+        .catch(err => {
+            document.getElementById('enrich-status').textContent = 'Error: ' + err.message;
+            btn.disabled = false;
+            btn.textContent = btn.id === 'bulk-enrich-btn' ? 'Enrich All Companies' : 'Enrich Selected';
+        });
+    }
+</script>

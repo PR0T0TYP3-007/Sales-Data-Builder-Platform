@@ -1,0 +1,97 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Upload Companies</div>
+</div>
+<form id="upload-form" enctype="multipart/form-data" method="POST" action="/upload">
+    <div class="upload-area" id="upload-area">
+        <div class="upload-icon"><i class="fas fa-upload"></i></div>
+        <h3>Drag & drop PDF, CSV, or Excel files here</h3>
+        <input type="file" id="file-input" name="companyFile" style="display:none;" accept=".pdf,.csv,.xlsx,.xls">
+    </div>
+</form>
+<div class="file-list" id="file-list">
+    <% if (preview && preview.length) { %>
+        <h4>Preview Extracted Companies</h4>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% preview.forEach(function(company) { %>
+                    <tr>
+                        <td><%= company.name %></td>
+                        <td><%= company.phone %></td>
+                        <td><%= company.address %></td>
+                        <td><%= company.description %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } %>
+</div>
+<% if (error) { %>
+    <div class="status-badge status-error"><%= error %></div>
+<% } %>
+<script>
+    // JS for drag & drop and file upload
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const uploadForm = document.getElementById('upload-form');
+    const fileList = document.getElementById('file-list');
+
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', e => { e.preventDefault(); uploadArea.classList.remove('dragover'); });
+    uploadArea.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        fileInput.files = e.dataTransfer.files;
+        handleFileUpload();
+    });
+
+    // Optionally, allow clicking the area to open file dialog
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) {
+            handleFileUpload();
+        }
+    });
+
+    function handleFileUpload() {
+        if (!fileInput.files.length) {
+            alert('Please select a file to upload.');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('companyFile', fileInput.files[0]);
+        // Show uploading status
+        uploadArea.classList.add('uploading');
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.text())
+        .then(html => {
+            // Replace the file-list div with the new preview from server
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newFileList = doc.getElementById('file-list');
+            if (newFileList) fileList.innerHTML = newFileList.innerHTML;
+            uploadArea.classList.remove('uploading');
+        })
+        .catch(err => {
+            alert('Upload failed: ' + err.message);
+            uploadArea.classList.remove('uploading');
+        });
+    }
+
+    // Prevent default form submit
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+    });
+</script>

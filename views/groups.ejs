@@ -1,0 +1,67 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Groups</div>
+    <div class="header-actions">
+        <a href="/groups/new" class="btn btn-primary"><i class="fas fa-plus btn-icon"></i>New Group</a>
+    </div>
+</div>
+<div class="groups-grid">
+    <% groups.forEach(function(group) { %>
+        <div class="card group-card">
+            <div class="card-header" style="justify-content: space-between; align-items: center;">
+                <span style="font-size:1.2rem;font-weight:600;"><%= group.name %></span>
+                <span class="badge" style="background:#e9ecef;color:#333;padding:0.3em 0.8em;border-radius:1em;font-size:0.9em;">ID: <%= group.id %></span>
+            </div>
+            <div class="card-body">
+                <div style="margin-bottom:1rem;">
+                    <strong>Description:</strong> <%= group.description || 'No description' %>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <strong>Companies in Group:</strong>
+                    <% if (group.companies && group.companies.length) { %>
+                        <ul style="margin:0 0 0.5rem 1.2rem;">
+                        <% group.companies.forEach(function(company) { %>
+                            <li><%= company.name %></li>
+                        <% }) %>
+                        </ul>
+                    <% } else { %>
+                        <span style="color:#aaa;">No companies in this group.</span>
+                    <% } %>
+                </div>
+                <form action="/groups/<%= group.id %>/add-companies" method="POST" style="margin-bottom:1.2rem;display:flex;gap:0.5rem;align-items:center;">
+                    <select name="company_ids" class="form-control" multiple required style="min-width:180px;">
+                        <% allCompanies.forEach(function(company) { %>
+                            <option value="<%= company.id %>"><%= company.name %></option>
+                        <% }) %>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-secondary">Add Companies</button>
+                </form>
+                <form action="/groups/<%= group.id %>/assign-workflow" method="POST" style="display:flex;gap:0.5rem;align-items:center;">
+                    <select name="workflow_id" class="form-control" required style="min-width:180px;">
+                        <% workflows.forEach(function(wf) { %>
+                            <option value="<%= wf.id %>"><%= wf.name %></option>
+                        <% }) %>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-success">Assign Workflow</button>
+                </form>
+            </div>
+        </div>
+    <% }) %>
+</div>
+<style>
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+.group-card .card-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+.group-card .card-body form {
+  margin-bottom: 0.8rem;
+}
+.group-card .form-control {
+  min-width: 120px;
+}
+</style>

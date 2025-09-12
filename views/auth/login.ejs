@@ -1,0 +1,32 @@
+<% layout('layout') %>
+<div class="login-container" style="margin-left:0 !important;">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size: 2.5rem; color: var(--primary);"><i class="fas fa-database"></i></div>
+      <h2>Sales Data Builder</h2>
+    </div>
+    <h3 class="login-title">Sign in to your account</h3>
+    <form action="/auth/login" method="POST">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <% if (error) { %>
+        <div class="status-badge status-error"><%= error %></div>
+      <% } %>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Sign in</button>
+    </form>
+    <div style="margin-top:2rem; text-align:center;">
+      <div style="font-size:1rem; color:var(--gray-700); margin-bottom:0.5rem;">Demo Users (password: <b>password</b>):</div>
+      <div style="font-size:0.95rem; color:var(--gray-600);">
+        <div>Admin: <b>admin@gmail.com</b></div>
+  <div>Manager: <b>manager@example.com</b></div>
+  <div>Member: <b>member@example.com</b></div>
+      </div>
+    </div>
+  </div>
+</div>

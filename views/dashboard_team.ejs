@@ -1,0 +1,44 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">My Dashboard</div>
+</div>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.totalTasks %></div>
+        <div class="stat-label">My Tasks</div>
+        <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.completedTasks %></div>
+        <div class="stat-label">Completed</div>
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.pendingTasks %></div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.dueTasks %></div>
+        <div class="stat-label">Due Now</div>
+        <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Recently Worked On</div>
+    <div class="card-body">
+        <% if (recentTasks && recentTasks.length) { %>
+            <% recentTasks.forEach(function(task) { %>
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="fas fa-tasks"></i></div>
+                    <div>
+                        <div class="activity-title"><%= task.type %> for <%= task.company_name || '' %></div>
+                        <div class="activity-desc">Due: <%= task.due_date ? task.due_date.toLocaleString ? task.due_date.toLocaleString() : task.due_date : '' %> | Status: <span class="status-badge status-<%= task.status %>"><%= task.status %></span></div>
+                    </div>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <div>No recent tasks.</div>
+        <% } %>
+    </div>
+</div>

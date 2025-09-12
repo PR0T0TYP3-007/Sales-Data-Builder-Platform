@@ -1,0 +1,171 @@
+Of course. Here is the content of the provided PDF, transcribed and formatted for clarity.
+
+***
+
+# Project Test -- Practice (Ghost)
+
+## Detailed PRD — Sales Data Builder Platform
+
+**Audience:** Engineers (no sales or enrichment background)
+**Version:** v1.1
+
+---
+
+### 1. What This System Does
+This system takes **lists of companies** from files (PDF, CSV, Excel). It:
+1.  **Extracts basic details** from those files (company name, phone, address).
+2.  **Finds missing details** on the internet (website, social media accounts, etc.).
+3.  **Finds employees** who work at those companies, starting with leaders or decision makers.
+4.  **Helps users group companies** into categories (like “real estate” or “restaurants”).
+5.  **Lets users create workflows** (step-by-step instructions like “Send an email,” “Make a phone call”).
+6.  **Creates tasks** from those workflows so users can carry them out.
+
+---
+
+### 2. User Roles
+-   **Admin:** sets up account, manages projects.
+-   **Manager:** organizes companies into groups, creates workflows.
+-   **Team Member:** carries out tasks (sends email, makes calls, logs outcomes).
+
+---
+
+### 3. System Structure
+-   **Organization** → top-level container (the company using the software).
+-   **Product** → sub-container (like a project or business line). All data inside one Product is separate from others.
+-   **Companies** → businesses imported or found.
+-   **Contacts** → people working at companies.
+-   **Groups** → categories of companies (e.g., “Restaurants in Halifax”).
+-   **Workflows** → step-by-step instructions for how to approach companies.
+-   **Tasks** → actual actions users must take, generated from workflows.
+
+---
+
+### 4. Workflow (End-to-End)
+
+**Step 1: Upload a File**
+-   **User Action:** Upload a PDF/CSV/Excel with company information.
+-   **System Action:**
+    -   Parse the file.
+    -   Extract company name, phone, address, and description if present.
+    -   Save to database as “company record” with `status = incomplete`.
+-   **Output to User:** Table preview of extracted companies.
+
+---
+
+**Step 2: Fill in Missing Company Info (Automatic Search)**
+-   **System Action (for each company):**
+    -   Search the web using company name + address.
+    -   Try to find official website.
+    -   If website found, scrape:
+        -   Homepage → description text.
+        -   “About” page → longer description.
+        -   Footer → phone/email/social links.
+    -   If socials found: save URLs (Instagram, Facebook, LinkedIn, Twitter).
+    -   Detect category/industry from text (keywords like “construction,” “bakery,” etc.).
+-   **Output to User:** Company profile page with website, description, socials.
+
+---
+
+**Step 3: Find Employees**
+-   **System Action:**
+    -   Visit the company’s website “Team” or “About Us” pages.
+    -   Collect names, job titles, and emails (if listed).
+    -   Classify roles (CEO, CTO, Manager, etc.).
+    -   If no employees listed → mark as “no employees found.”
+-   **Future Enhancement:** Crawl external sites (like press releases, government filings, or social media mentions) for more employee names.
+-   **Output to User:** List of employees per company with roles.
+
+---
+
+**Step 4: Group Companies**
+-   **User Action:** Select companies and assign them into groups (e.g., “Restaurants” or “Banks”).
+-   **System Action:** Auto-suggest groups based on detected industry keywords.
+-   **Output to User:** Saved groups of companies for bulk actions.
+
+---
+
+**Step 5: Create a Workflow**
+-   **User Action:** Build a sequence of steps to interact with companies.
+-   **System Action:** Workflow builder includes:
+    -   Step types: email, phone call, LinkedIn message, event invite, send package.
+    -   Delay days (e.g., “Step 2 happens 3 days after Step 1”).
+    -   Assign role (who should do it).
+    -   Templates (message text, call script).
+-   **Output to User:** Saved workflow attached to one group of companies.
+
+---
+
+**Step 6: Generate Tasks**
+-   **System Action:** For every company in a group, generate tasks from workflow.
+    -   Example:
+        -   Task 1: Send intro email to “John Doe” at “ABC Ltd.”
+        -   Task 2: (3 days later) Call main phone number of ABC Ltd.
+    -   Store each task with `status = pending`.
+-   **Output to User:** Task inbox/dashboard with tasks assigned to each team member.
+
+---
+
+**Step 7: Execution & Tracking**
+-   **User Action:** Complete tasks in inbox.
+-   **System Action:** Mark task as completed with notes.
+-   **Output to User:** Dashboard showing progress (tasks done, responses logged).
+
+---
+
+## 5. 💬 Data Model (Simplified Schema)
+
+**organizations**(id, name)
+**products**(id, org_id, name)
+**companies**(id, product_id, name, website, socials JSON, industry, status)
+**contacts**(id, company_id, name, role, email, phone)
+**groups**(id, product_id, name, filter JSON)
+**workflows**(id, product_id, name, steps JSON)
+**tasks**(id, workflow_id, company_id, contact_id, type, due_date, status)
+**audit_logs**(id, actor_id, action, entity, entity_id, ts)
+
+---
+
+## 6. 💬 UI / UX Requirements
+
+-   **Home (per Product):**
+    -   Upload button.
+    -   Company list with enrichment progress indicator.
+    -   Shortcuts to Groups and Workflows.
+
+**Company Profile:**
+-   Logo, name, website, socials.
+-   Employee list.
+-   Assigned workflows + tasks.
+
+**Group View:**
+-   Companies displayed in table/kanban.
+-   Bulk-assign workflows.
+
+**Workflow Builder:**
+-   Timeline view (Step 1 → Step 2 → Step 3).
+-   Step types selectable from dropdown.
+-   Each step editable (offset, template).
+
+**Task Inbox:**
+-   Daily list of tasks.
+-   Filters by workflow/company/status.
+-   Mark complete button.
+
+---
+
+## 7. 💤 Rules & Constraints
+
+-   All data scoped by **product_id** → no overlap across Products.
+-   Web searching/scraping must respect robots.txt and rate limits.
+-   Tasks generated asynchronously (background jobs).
+-   Parsing PDF/CSV errors must be logged + reported to user.
+
+---
+
+## 9. 💤 Success Criteria
+
+-   User uploads file → ≥90% correct company extraction.
+-   System finds website for ≥60% of companies.
+-   Users can create at least one workflow with multiple steps.
+-   Tasks are generated and appear in inbox with due dates.
+-   Dashboard shows number of tasks completed vs. pending.

@@ -1,0 +1,31 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Audit Logs</div>
+</div>
+<div class="card">
+    <div class="card-header">Recent Actions</div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Entity ID</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% logs.forEach(function(log) { %>
+                    <tr>
+                        <td><%= log.actor_name %></td>
+                        <td><%= log.action %></td>
+                        <td><%= log.entity %></td>
+                        <td><%= log.entity_id %></td>
+                        <td><%= log.ts %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
