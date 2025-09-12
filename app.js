@@ -15,13 +15,6 @@ import { getAuditLogs } from './models/AuditLog.js';
 import { createGroup } from './models/Group.js';
 import { getAllTeamMembers } from './models/Auth.js';
 
-// 404 handler (should be last route)
-app.use((req, res, next) => {
-  res.status(404).render('404', { title: '404 - Not Found' });
-});
-// Place this after 'const app = express();' and all imports
-
-
 // Import route files
 import companyRoutes from './routes/companies.js';
 import workflowRoutes from './routes/workflow.js';
@@ -388,6 +381,10 @@ app.get('/audit-logs', requireAuth, requireRole('manager'), async (req, res) => 
 // Settings
 app.get('/settings', requireAuth, (req, res) => {
   res.render('settings', { title: 'Settings', user: req.session.user });
+});
+
+app.use((req, res, next) => {
+  res.status(404).render('404', { title: '404 - Not Found' });
 });
 
 app.use(errorHandler);
