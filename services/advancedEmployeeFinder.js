@@ -1,7 +1,4 @@
-import axios from 'axios';
-import { parse } from 'node-html-parser';
-import { createContact } from '../models/Contact.js';
-import { webScrapingQueue } from './queue.js';
+// Logic merged into employeeFinder.js for unified employee discovery.
 
 // Government database search (mock implementation)
 const searchGovernmentRecords = async (companyName, location) => {
@@ -33,7 +30,7 @@ const searchPressReleases = async (companyName) => {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
-      timeout: 10000
+  // Removed timeout for performance
     });
 
     const html = response.data;

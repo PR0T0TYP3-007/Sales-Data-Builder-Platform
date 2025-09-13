@@ -1,4 +1,8 @@
-// controllers/companyController.js
+/**
+ * Company Controller
+ * Handles company upload, parsing, enrichment, and industry detection.
+ * Bulk enrichment uses a job queue for parallel processing.
+ */
 import pdf from 'pdf-parse';
 import xlsx from 'xlsx';
 import { parse } from 'csv-parse/sync';
@@ -448,11 +452,15 @@ const updateCompanyStatus = async (companyId, status) => {
   return result.rows[0];
 };
 
-// Bulk enrichment for multiple companies
+/**
+ * Bulk enrichment for multiple companies using a job queue.
+ * Each company is added to the webScrapingQueue for parallel processing.
+ * The queue processor will use a waterfall approach for website discovery and enrichment.
+ */
 const bulkEnrichCompanies = async (req, res) => {
   try {
+    // Log incoming request for debugging
     console.log('bulkEnrichCompanies called. Body:', req.body);
-    // Debug: log type and content of companyIds
     if (req.body && req.body.companyIds) {
       console.log('Type of companyIds:', typeof req.body.companyIds, Array.isArray(req.body.companyIds));
       console.log('companyIds:', req.body.companyIds);
@@ -460,6 +468,7 @@ const bulkEnrichCompanies = async (req, res) => {
     const { companyIds } = req.body;
     const userId = req.session.user.id;
 
+    // Validate input
     if (!companyIds || !Array.isArray(companyIds)) {
       return res.status(400).json({
         success: false,
@@ -469,22 +478,23 @@ const bulkEnrichCompanies = async (req, res) => {
 
     const results = [];
 
+    // Add each company to the enrichment queue
     for (const companyId of companyIds) {
       try {
         const company = await getCompanyById(companyId);
         if (company) {
-      // Allow enrichment even if website is null
-      await webScrapingQueue.add({
-        type: 'company_enrichment',
-        companyId: companyId,
-        companyName: company.name,
-        url: company.website || null,
-        userId: userId
-      }, {
-        attempts: 2,
-        timeout: 180000 // 3 minutes
-      });
-      results.push({ companyId, status: 'queued' });
+          // Add job to queue for parallel enrichment
+          await webScrapingQueue.add({
+            type: 'company_enrichment',
+            companyId: companyId,
+            companyName: company.name,
+            url: company.website || null,
+            userId: userId
+          }, {
+            attempts: 2,
+            timeout: 180000 // 3 minutes
+          });
+          results.push({ companyId, status: 'queued' });
         } else {
           results.push({ companyId, status: 'skipped', reason: 'Company not found' });
         }
@@ -493,7 +503,7 @@ const bulkEnrichCompanies = async (req, res) => {
       }
     }
 
-    // Create audit log
+    // Audit log for bulk enrichment
     await createAuditLog(
       userId,
       'bulk_company_enrichment',
@@ -503,6 +513,7 @@ const bulkEnrichCompanies = async (req, res) => {
       { companies_processed: companyIds.length, results }
     );
 
+    // Respond with queue status
     res.json({
       success: true,
       message: `Queued enrichment for ${results.filter(r => r.status === 'queued').length} companies.`,

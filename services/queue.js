@@ -116,6 +116,18 @@ simpleQueue.process('email', 1, async (job) => {
 import { advancedWebsiteGuess, fuzzyGoogleWebsite } from './advancedWebsiteGuesser.js';
 import { lookupCompanyOpenCorporates } from './companyRegistryLookup.js';
 import { nlpExtractLinks } from './nlpExtractLinks.js';
+
+/**
+ * Processor for company enrichment jobs.
+ * Uses a waterfall approach:
+ * 1. Try registry API for website/socials
+ * 2. Try advanced guesser
+ * 3. Try public social and directory search
+ * 4. Try fuzzy Google match
+ * 5. Scrape website and extract data
+ * 6. NLP extraction for additional links
+ * Updates company record with website and socials.
+ */
 simpleQueue.process('company_enrichment', 3, async (job) => {
   const { companyId, url, userId, companyName } = job.data;
   try {
@@ -127,8 +139,8 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
     let emails = [];
     let address = '';
     let socials = {};
+    // Step 1: Try registry API for website/socials
     if (!websiteToUse) {
-      // Try to get emails and address from DB
       try {
         const { getCompanyById } = await import('../models/Company.js');
         const dbCompany = await getCompanyById(companyId);
@@ -137,7 +149,6 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
           try { emails = JSON.parse(dbCompany.emails); } catch (e) { emails = []; }
         }
       } catch (e) {}
-      // 1: Try company registry API first
       const registryResult = await lookupCompanyOpenCorporates({ name: companyName, address });
       if (registryResult && registryResult.website) {
         websiteToUse = registryResult.website;
@@ -145,26 +156,26 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
         console.log(`[QUEUE] RegistryLookup found for companyId=${companyId}:`, websiteToUse, socials);
       }
     }
+    // Step 2: Try advanced guesser
     if (!websiteToUse) {
-      // 6, 2, 1: Try advanced guesser
       websiteToUse = await advancedWebsiteGuess({ name: companyName, address, emails });
       console.log(`[QUEUE] AdvancedWebsiteGuess found for companyId=${companyId}:`, websiteToUse);
     }
-  // Social media public search (all four platforms)
-  const publicSocials = await searchAllSocials(companyName);
-  socials = { ...socials, ...publicSocials };
-  // Business directory search (Yelp, YellowPages, BBB)
-  const directories = await searchAllDirectories(companyName);
-  socials = { ...socials, ...directories };
+    // Step 3: Public social and directory search
+    const publicSocials = await searchAllSocials(companyName);
+    socials = { ...socials, ...publicSocials };
+    const directories = await searchAllDirectories(companyName);
+    socials = { ...socials, ...directories };
+    // Step 4: Fuzzy Google match
     if (!websiteToUse) {
-      // 5: Fuzzy Google match
       websiteToUse = await fuzzyGoogleWebsite({ name: companyName, address });
       console.log(`[QUEUE] FuzzyGoogleWebsite found for companyId=${companyId}:`, websiteToUse);
     }
+    // Step 5: Scrape website and extract data
     let scrapedData = { url: websiteToUse, socialLinks: socials };
     if (websiteToUse) {
       scrapedData = await scrapeWebsiteData(websiteToUse);
-      // NLP extraction from HTML/text
+      // Step 6: NLP extraction for additional links
       let nlpLinks = { website: null, socials: {} };
       if (scrapedData && scrapedData.html) {
         nlpLinks = nlpExtractLinks(scrapedData.html);

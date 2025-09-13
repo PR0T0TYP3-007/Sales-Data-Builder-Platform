@@ -1,3 +1,7 @@
+/**
+ * Company Model
+ * Defines company schema and database operations.
+ */
 // Get companies with pagination
 const getCompaniesPaginated = async (page = 1, limit = 15) => {
   const offset = (page - 1) * limit;

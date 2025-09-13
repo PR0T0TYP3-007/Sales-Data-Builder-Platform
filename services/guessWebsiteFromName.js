@@ -1,4 +1,4 @@
-import axios from 'axios';
+// This file's logic has been merged into companyFinder.js for unified enrichment.
 
 const COMMON_TLDS = ['.com', '.net', '.org', '.ca', '.co', '.io', '.biz', '.info'];
 

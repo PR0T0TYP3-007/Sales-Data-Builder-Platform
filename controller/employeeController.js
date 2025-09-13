@@ -1,5 +1,4 @@
-import findEmployees from '../services/employeeFinder.js';
-import { advancedEmployeeDiscovery } from '../services/advancedEmployeeFinder.js';
+import { findEmployees } from '../services/employeeFinder.js';
 import { createContact, getContactsByCompanyId } from '../models/Contact.js';
 import { getCompanyById } from '../models/Company.js';
 import { createAuditLog } from '../models/AuditLog.js';
@@ -56,44 +55,24 @@ const findAndSaveEmployees = async (req, res) => {
   }
 };
 
-// Advanced employee discovery endpoint
+// Unified advanced employee discovery endpoint
 const advancedFindEmployees = async (req, res) => {
   try {
     const companyId = req.params.id;
     const company = await getCompanyById(companyId);
-    
     if (!company) {
       return res.status(404).json({ error: 'Company not found.' });
     }
-
-    // Queue advanced discovery job
-    await webScrapingQueue.add({
-      type: 'employee_discovery',
-      companyId: companyId,
-      companyName: company.name,
-      location: company.address,
-      userId: req.session.user.id
-    }, {
-      attempts: 2,
-      timeout: 300000 // 5 minutes
-    });
-
+    // Use unified employee discovery (normal + advanced)
+    const result = await findEmployees(companyId, company.name, company.website, company.address);
     res.json({
       success: true,
-      message: 'Advanced employee discovery queued. This may take several minutes.',
-      data: {
-        company_id: companyId,
-        company_name: company.name,
-        job_status: 'queued'
-      }
+      employees: result.savedContacts,
+      sources: result.employees // includes all sources
     });
-
   } catch (error) {
     console.error('Error in advancedFindEmployees:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Internal server error during advanced employee search.' 
-    });
+    res.status(500).json({ error: 'Internal server error during advanced employee discovery.' });
   }
 };
 

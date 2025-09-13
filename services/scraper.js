@@ -1,13 +1,11 @@
 import axios from 'axios';
 import { parse } from 'node-html-parser';
-import { domainRateLimiter } from '../middleware/rateLimit.js';
 
 const scrapeWebsiteData = async (url) => {
   try {
     console.log(`[SCRAPER] Scraping: ${url}`);
     
     const axiosInstance = axios.create({
-      timeout: 15000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -17,8 +15,7 @@ const scrapeWebsiteData = async (url) => {
       },
     });
 
-    // Add delay to be polite
-    await new Promise(resolve => setTimeout(resolve, parseInt(process.env.SCRAPING_DELAY_MS) || 2000));
+  // Removed unnecessary delay for performance
 
     const response = await axiosInstance.get(url);
     const html = response.data;

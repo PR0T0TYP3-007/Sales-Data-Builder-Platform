@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { parse } from 'node-html-parser';
+// This file's logic has been merged into companyFinder.js for unified enrichment.
 
 const COMMON_TLDS = ['.com', '.net', '.org', '.ca', '.co', '.io', '.biz', '.info', '.us', '.uk', '.fr', '.de', '.in'];
 const PATTERNS = [
@@ -30,7 +29,7 @@ export async function advancedWebsiteGuess({ name, address, emails }) {
   let found = null;
   let timedOut = false;
   // Promise that resolves after 10 seconds
-  const timeoutPromise = new Promise(resolve => setTimeout(() => { timedOut = true; resolve(null); }, 10000));
+  const timeoutPromise = new Promise(resolve => setTimeout(() => { timedOut = true; resolve(null); }, 25000));
   // Main guessing logic as a promise
   const guessPromise = (async () => {
     // 6. Check for email domain
