@@ -146,4 +146,4 @@ const enrichCompany = async (companyId, companyName, location, existingData = {}
   }
 };
 
-module.exports = enrichCompany;
+export default enrichCompany;
