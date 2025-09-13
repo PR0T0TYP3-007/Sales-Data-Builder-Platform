@@ -135,8 +135,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     }
   // Limit recent activity to 8 items
   const limitedActivity = activity.slice(0, 8);
-  // Calculate percent enriched
-  const enrichedCount = companies.filter(c => c.status === 'enriched' || c.status === 'partially_enriched').length;
+  // Calculate percent enriched based on actual data
+  const enrichedCount = companies.filter(c => {
+    return (c.website || (c.socials && (
+      c.socials.linkedin || c.socials.facebook || c.socials.twitter || c.socials.instagram
+    )));
+  }).length;
   const percentEnriched = companies.length > 0 ? Math.round((enrichedCount / companies.length) * 100) : 0;
   stats.percentEnriched = percentEnriched;
   res.render('dashboard', { title: 'Dashboard', stats, activity: limitedActivity, user: req.session.user, enrichedCompanies });
@@ -334,7 +338,7 @@ app.post('/tasks/:taskId/assign', requireAuth, async (req, res) => {
 // Upload page (GET: render, POST: upload)
 import multer from 'multer';
 import { uploadAndParsePdf } from './controller/companyController.js';
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024, files: 1 } });
 
 
 // Direct /upload GET route

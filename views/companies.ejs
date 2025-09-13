@@ -34,7 +34,15 @@
                         <% } %>
                     </td>
                     <td><%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></td>
-                    <td><span class="status-badge status-<%= company.enrichment_status || company.status %>"><%= company.enrichment_status || company.status %></span></td>
+                    <td>
+                        <% let displayStatus = 'Incomplete'; %>
+                        <% if (company.website || (company.socials && (company.socials.linkedin || company.socials.facebook || company.socials.twitter || company.socials.instagram))) { %>
+                            <% displayStatus = 'Enriched'; %>
+                        <% } else if (company.email || company.description || company.industry) { %>
+                            <% displayStatus = 'Partially Enriched'; %>
+                        <% } %>
+                        <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
+                    </td>
                     <td>
                         <a href="/companies/<%= company.id %>" class="btn btn-sm btn-secondary">View</a>
                     </td>

@@ -135,11 +135,41 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
     const { scrapeWebsiteData } = await import('./scraper.js');
     const { updateCompany } = await import('../models/Company.js');
     const { createAuditLog } = await import('../models/AuditLog.js');
+    const { default: companyFinder } = await import('./companyFinder.js');
     let websiteToUse = url;
     let emails = [];
     let address = '';
     let socials = {};
-    // Step 1: Try registry API for website/socials
+    // Step 1: Use companyFinder service first
+    // Get company details from DB if needed
+    let companyDetails = { name: companyName, address: '', phone: '' };
+    if (!companyName || typeof companyName === 'object') {
+      const { getCompanyById } = await import('../models/Company.js');
+      const dbCompany = await getCompanyById(companyId);
+      companyDetails = {
+        name: dbCompany?.name || '',
+        address: dbCompany?.address || '',
+        phone: dbCompany?.phone || ''
+      };
+    }
+    let finderResult = await companyFinder(companyDetails.name, companyDetails.address, companyDetails.phone);
+    // Determine enrichment status
+    let enrichmentStatus = "incomplete";
+    const hasSocials = finderResult && finderResult.socials && (
+      finderResult.socials.linkedin || finderResult.socials.facebook || finderResult.socials.twitter || finderResult.socials.instagram
+    );
+    if (finderResult && (finderResult.website || hasSocials)) {
+      enrichmentStatus = "enriched";
+      websiteToUse = finderResult.website;
+      socials = { ...socials, ...finderResult.socials };
+      console.log(`[QUEUE] companyFinder found for companyId=${companyId}:`, websiteToUse, socials);
+    } else if (finderResult && (finderResult.email || finderResult.description || finderResult.industry)) {
+      enrichmentStatus = "partially_enriched";
+      console.log(`[QUEUE] companyFinder partially enriched for companyId=${companyId}`);
+    } else {
+      console.log(`[QUEUE] companyFinder did not find website or socials for companyId=${companyId}`);
+    }
+    // Step 2: Try registry API for website/socials if not found
     if (!websiteToUse) {
       try {
         const { getCompanyById } = await import('../models/Company.js');
@@ -152,38 +182,36 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
       const registryResult = await lookupCompanyOpenCorporates({ name: companyName, address });
       if (registryResult && registryResult.website) {
         websiteToUse = registryResult.website;
-        socials = registryResult.socials || {};
+        socials = { ...socials, ...registryResult.socials };
         console.log(`[QUEUE] RegistryLookup found for companyId=${companyId}:`, websiteToUse, socials);
+      } else {
+        console.log(`[QUEUE] RegistryLookup did not find website for companyId=${companyId}`);
       }
     }
-    // Step 2: Try advanced guesser
+    // Step 3: Try advanced guesser
     if (!websiteToUse) {
       websiteToUse = await advancedWebsiteGuess({ name: companyName, address, emails });
       console.log(`[QUEUE] AdvancedWebsiteGuess found for companyId=${companyId}:`, websiteToUse);
     }
-    // Step 3: Public social and directory search
-    const publicSocials = await searchAllSocials(companyName);
-    socials = { ...socials, ...publicSocials };
-    const directories = await searchAllDirectories(companyName);
-    socials = { ...socials, ...directories };
-    // Step 4: Fuzzy Google match
+  // Removed Step 4: Public social and directory search
+    // Step 5: Fuzzy Google match
     if (!websiteToUse) {
       websiteToUse = await fuzzyGoogleWebsite({ name: companyName, address });
       console.log(`[QUEUE] FuzzyGoogleWebsite found for companyId=${companyId}:`, websiteToUse);
     }
-    // Step 5: Scrape website and extract data
+    // Step 6: Scrape website and extract data
     let scrapedData = { url: websiteToUse, socialLinks: socials };
     if (websiteToUse) {
       scrapedData = await scrapeWebsiteData(websiteToUse);
-      // Step 6: NLP extraction for additional links
+      // Step 7: NLP extraction for additional links
       let nlpLinks = { website: null, socials: {} };
       if (scrapedData && scrapedData.html) {
         nlpLinks = nlpExtractLinks(scrapedData.html);
       } else if (scrapedData && scrapedData.description) {
         nlpLinks = nlpExtractLinks(scrapedData.description);
       }
-      // Merge all sources: registry, NLP, scraped, social, directories
-      // Priority: registry > NLP > scraped > public social > directories > guess/google
+      // Merge all sources: finder, registry, NLP, scraped, social, directories
+      // Priority: companyFinder > registry > NLP > scraped > public social > directories > guess/google
       const allSocials = { ...scrapedData.socialLinks, ...nlpLinks.socials, ...socials };
       // Deduplicate socials (prefer official/shortest links)
       const dedupedSocials = {};
@@ -193,15 +221,15 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
         }
       }
       scrapedData.socialLinks = dedupedSocials;
-      // Website: prefer registry, then NLP, then scraped, then guessed
+      // Website: prefer companyFinder, then registry, then NLP, then scraped, then guessed
       if (!websiteToUse && nlpLinks.website) websiteToUse = nlpLinks.website;
       if (!websiteToUse && scrapedData.url) websiteToUse = scrapedData.url;
       console.log(`[QUEUE] Scraped data for companyId=${companyId}:`, scrapedData);
     } else {
       console.log(`[QUEUE] No website found for companyId=${companyId}, skipping scrape. Returning empty socials.`);
     }
-    // Only update the website and socials columns
-    const updateFields = {};
+    // Update website, socials, and enrichment status columns
+    const updateFields = { status: enrichmentStatus };
     if (websiteToUse) {
       updateFields.website = websiteToUse;
     }
