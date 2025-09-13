@@ -3,7 +3,7 @@ import multer from 'multer';
 import { uploadAndParsePdf, getCompaniesController, enrichCompanyData, detectCompanyIndustry, bulkEnrichCompanies, bulkDetectIndustry } from '../controller/companyController.js';
 import { findAndSaveEmployees, getCompanyContacts, advancedFindEmployees, bulkFindEmployees } from '../controller/employeeController.js';
 import { scrapingRateLimiter } from '../middleware/rateLimit.js';
-import { parseCompanyFile } from '../services/companyFinder.js';
+// import { parseCompanyFile } from '../services/companyFinder.js';
 import { bulkInsertCompanies } from '../models/Company.js';
 
 const router = express.Router();
@@ -40,7 +40,8 @@ router.post('/bulk-enrich', async (req, res) => {
 
 router.post('/import', upload.single('companyFile'), async (req, res) => {
     try {
-        const previewCompanies = await parseCompanyFile(req.file.path);
+    // const previewCompanies = await parseCompanyFile(req.file.path);
+    const previewCompanies = []; // No file parsing available
         if (!previewCompanies || previewCompanies.length === 0) {
             throw new Error('No companies found in file. Please check your file format.');
         }
