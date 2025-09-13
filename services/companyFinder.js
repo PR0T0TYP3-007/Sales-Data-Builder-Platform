@@ -5,7 +5,7 @@
  */
 import axios from 'axios';
 import * as dotenv from "dotenv";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 dotenv.config();
 const BING_KEY = process.env.BING_API_KEY;
 
