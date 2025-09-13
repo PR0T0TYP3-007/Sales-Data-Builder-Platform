@@ -34,7 +34,7 @@
                         <% } %>
                     </td>
                     <td><%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></td>
-                    <td><span class="status-badge status-<%= company.status %>"><%= company.status %></span></td>
+                    <td><span class="status-badge status-<%= company.enrichment_status || company.status %>"><%= company.enrichment_status || company.status %></span></td>
                     <td>
                         <a href="/companies/<%= company.id %>" class="btn btn-sm btn-secondary">View</a>
                     </td>

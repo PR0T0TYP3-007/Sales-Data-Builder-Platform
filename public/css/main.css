@@ -1,3 +1,20 @@
+/* Enrichment Status Badges */
+.status-enriched {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+}
+.status-partially_enriched {
+    background-color: #fffde7;
+    color: #fbc02d;
+}
+.status-failed, .status-scraping_failed, .status-website_not_found {
+    background-color: #ffcdd2;
+    color: #c62828;
+}
+.status-incomplete {
+    background-color: #ffecb3;
+    color: #f57f17;
+}
 /* --- BEGIN: Full CSS from deepseek_html_20250911_c10797 (2).html --- */
 :root {
     --primary: #3a5e8c;
@@ -679,41 +696,43 @@ textarea.form-control {
         transform: translateX(-100%);
         width: 280px;
     }
-    
     .sidebar.open {
         transform: translateX(0);
     }
-    
     .main-content {
         margin-left: 0;
         width: 100%;
     }
-    
     .menu-toggle {
         display: block;
         margin-right: 1rem;
         font-size: 1.5rem;
         cursor: pointer;
     }
-    
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
     .filters {
         flex-direction: column;
     }
-    
     .search-box {
         min-width: 100%;
     }
-    
     .company-profile {
         grid-template-columns: 1fr;
     }
-
     .upload-area {
         padding: 1.5rem;
+    }
+    .table-container {
+        padding-left: 0;
+        padding-right: 0;
+        overflow-x: auto;
+    }
+    .table th, .table td {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        word-break: break-word;
     }
 }
 

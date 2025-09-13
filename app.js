@@ -136,7 +136,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   // Limit recent activity to 8 items
   const limitedActivity = activity.slice(0, 8);
   // Calculate percent enriched
-  const enrichedCount = companies.filter(c => c.status === 'enriched').length;
+  const enrichedCount = companies.filter(c => c.status === 'enriched' || c.status === 'partially_enriched').length;
   const percentEnriched = companies.length > 0 ? Math.round((enrichedCount / companies.length) * 100) : 0;
   stats.percentEnriched = percentEnriched;
   res.render('dashboard', { title: 'Dashboard', stats, activity: limitedActivity, user: req.session.user, enrichedCompanies });
