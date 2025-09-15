@@ -13,7 +13,9 @@
             <a href="/upload" class="nav-item" data-page="upload"><span class="nav-icon"><i class="fas fa-upload"></i></span>Upload</a>
             <a href="/enrich" class="nav-item" data-page="enrich"><span class="nav-icon"><i class="fas fa-magic"></i></span>Enrich</a>
         <% } %>
+        <% if (user && user.role !== 'team_member') { %>
         <a href="/tasks" class="nav-item" data-page="tasks"><span class="nav-icon"><i class="fas fa-tasks"></i></span>Tasks</a>
+        <% } %>
         <% if (user && user.role === 'admin') { %>
             <a href="/audit-logs" class="nav-item" data-page="audit"><span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>Audit Logs</a>
         <% } %>
