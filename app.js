@@ -96,7 +96,7 @@ app.get('/login', (req, res) => {
 // Dashboard
 app.get('/dashboard', requireAuth, async (req, res) => {
   try {
-    if (req.session.user && req.session.user.role === 'team-member') {
+    if (req.session.user && req.session.user.role === 'team_member') {
       // Special dashboard for team members
       const allTasks = await getAllTasks();
       const userId = req.session.user.id;
@@ -151,7 +151,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
 
 // Companies list
 app.get('/companies', requireAuth, (req, res, next) => {
-  if (req.session.user && req.session.user.role === 'team-member') {
+  if (req.session.user && req.session.user.role === 'team_member') {
     return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
   }
   next();
