@@ -1,0 +1,97 @@
+
+
+
+<% layout('layout') %>
+
+<div class="header">
+    <div class="page-title">Company Enrichment</div>
+</div>
+
+<form method="GET" action="/enrich" style="max-width:600px;margin:1em auto 0 auto;display:flex;gap:0.5em;justify-content:center;">
+    <input type="text" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search companies by name, website, phone, address, or industry" class="form-control" style="flex:1;min-width:0;">
+    <button type="submit" class="btn btn-primary">Search</button>
+</form>
+
+<!-- Pagination controls moved below table -->
+<div class="table-container" style="max-width: 1100px; margin: 0 auto 2rem auto; padding-left: 20px; padding-right: 20px;">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Website</th>
+                <th>Industry</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (companies && companies.length) { %>
+                <% companies.forEach(function(company) { %>
+                    <tr>
+                        <td><%= company.name %></td>
+                        <td><%= company.phone || '' %></td>
+                        <td><%= company.address || '' %></td>
+                        <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <% if (company.website) { %>
+                                <a href="<%= company.website %>" target="_blank" style="display:inline-block;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;">
+                                    <%= company.website.length > 30 ? company.website.substring(0, 27) + '...' : company.website %>
+                                </a>
+                            <% } else { %>
+                                <span style="color:#aaa;">N/A</span>
+                            <% } %>
+                        </td>
+                        <td><%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></td>
+                        <td>
+                            <% let displayStatus = 'Incomplete'; %>
+                            <% if (company.website || (company.socials && (company.socials.linkedin || company.socials.facebook || company.socials.twitter || company.socials.instagram))) { %>
+                                <% displayStatus = 'Enriched'; %>
+                            <% } else if (company.email || company.description || company.industry) { %>
+                                <% displayStatus = 'Partially Enriched'; %>
+                            <% } %>
+                            <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
+                        </td>
+                        <td>
+                            <form action="/enrich" method="POST" style="display:inline;">
+                                <input type="hidden" name="companyIds" value="<%= company.id %>">
+                                <button type="submit" class="btn btn-success btn-sm">Enrich</button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %>
+            <% } else { %>
+                <tr><td colspan="7" style="text-align:center;color:#888;padding:2em;">No companies found.</td></tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+<div style="display:flex;flex-direction:column;align-items:center;margin-top:1em;">
+    <div style="margin-bottom:0.5em;">
+        Page <%= page %> of <%= totalPages %>
+    </div>
+    <div>
+        <% function buildPageUrl(p) { %>
+            <% let params = [];
+               if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+               params.push('page=' + p);
+               return '?' + params.join('&'); %>
+        <% } %>
+        <% if (page > 1) { %>
+            <a href="<%= buildPageUrl(1) %>" class="btn btn-sm btn-secondary">First</a>
+            <a href="<%= buildPageUrl(page - 1) %>" class="btn btn-sm btn-secondary">Prev</a>
+        <% } %>
+        <% for (let p = Math.max(1, page-2); p <= Math.min(totalPages, page+2); p++) { %>
+            <% if (p === page) { %>
+                <span class="btn btn-sm btn-primary" style="pointer-events:none;"><%= p %></span>
+            <% } else { %>
+                <a href="<%= buildPageUrl(p) %>" class="btn btn-sm btn-secondary"><%= p %></a>
+            <% } %>
+        <% } %>
+        <% if (page < totalPages) { %>
+            <a href="<%= buildPageUrl(page + 1) %>" class="btn btn-sm btn-secondary">Next</a>
+            <a href="<%= buildPageUrl(totalPages) %>" class="btn btn-sm btn-secondary">Last</a>
+        <% } %>
+    </div>
+</div>

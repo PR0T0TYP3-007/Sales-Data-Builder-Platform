@@ -1,0 +1,115 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Groups</div>
+    <% if (user && user.role !== 'team-member') { %>
+    <div class="header-actions">
+        <a href="/groups/new" class="btn btn-primary"><i class="fas fa-plus btn-icon"></i>New Group</a>
+    </div>
+    <% } %>
+</div>
+<div class="groups-grid">
+        <% groups.forEach(function(group) { %>
+            <div class="group-block" style="width:100%;margin-bottom:2.5rem;">
+                <div class="group-header" style="display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;padding:1rem 1.5rem;border-radius:8px 8px 0 0;">
+                    <span style="font-size:1.3rem;font-weight:700;"><%= group.name %></span>
+                    <span class="badge" style="background:#e9ecef;color:#333;padding:0.3em 0.8em;border-radius:1em;font-size:0.9em;">ID: <%= group.id %></span>
+                </div>
+                <div class="group-body" style="background:#fff;padding:1.5rem;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                    <div style="margin-bottom:1rem;"><strong>Description:</strong> <%= group.description || 'No description' %></div>
+                    <div style="margin-bottom:1rem;">
+                        <strong>Companies in Group:</strong>
+                        <% if (group.companies && group.companies.length) { %>
+                            <table class="table" style="width:100%;margin-bottom:1rem;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:28%;">Name</th>
+                                        <th style="width:22%;">Email</th>
+                                        <th style="width:18%;">Phone</th>
+                                        <th style="width:22%;">Website</th>
+                                        <th style="width:10%;">Remove</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% group.companies.forEach(function(company) { %>
+                                        <tr>
+                                            <td style="font-weight:500;"><%= company.name %></td>
+                                            <td><%= company.email || 'N/A' %></td>
+                                            <td style="font-family:monospace;font-size:1.05em;"><%= company.phone || 'N/A' %></td>
+                                            <td>
+                                                <% if (company.website) { %>
+                                                    <a href="<%= company.website %>" target="_blank">
+                                                        <%= company.website.length > 30 ? company.website.substring(0, 27) + '...' : company.website %>
+                                                    </a>
+                                                <% } else { %>
+                                                    <span style="color:#aaa;">N/A</span>
+                                                <% } %>
+                                            </td>
+                                            <% if (user && user.role !== 'team-member') { %>
+                                            <td>
+                                                <form action="/groups/<%= group.id %>/remove-company" method="POST" style="display:inline;">
+                                                    <input type="hidden" name="company_id" value="<%= company.id %>" />
+                                                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                </form>
+                                            </td>
+                                            <% } %>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        <% } else { %>
+                            <span style="color:#aaa;">No companies in this group.</span>
+                        <% } %>
+                    </div>
+                    <% if (user && user.role !== 'team-member') { %>
+                    <form action="/groups/<%= group.id %>/add-companies" method="POST" style="margin-bottom:1.2rem;display:flex;gap:0.5rem;align-items:center;">
+                        <select name="company_ids" class="form-control" multiple required style="min-width:180px;max-height:120px;overflow-y:auto;">
+                            <% allCompanies.forEach(function(company) { %>
+                                <% if (!(group.companies && group.companies.some(c => c.id === company.id))) { %>
+                                    <option value="<%= company.id %>"><%= company.name %></option>
+                                <% } %>
+                            <% }) %>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-secondary">Add Companies</button>
+                    </form>
+                    <form action="/groups/<%= group.id %>/assign-workflow" method="POST" style="display:flex;gap:0.5rem;align-items:center;">
+                        <select name="workflow_id" class="form-control" required style="min-width:180px;">
+                            <% workflows.forEach(function(wf) { %>
+                                <option value="<%= wf.id %>"><%= wf.name %></option>
+                            <% }) %>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success">Assign Workflow</button>
+                    </form>
+                    <form action="/groups/<%= group.id %>/delete" method="POST" style="margin-top:0.8rem;">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this group?');">Delete Group</button>
+                    </form>
+                    <% } %>
+                </div>
+            </div>
+        <% }) %>
+</div>
+<style>
+.group-block {
+    width: 100%;
+    margin-bottom: 2.5rem;
+}
+.group-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 8px 8px 0 0;
+    padding: 1rem 1.5rem;
+}
+.group-body {
+    background: #fff;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 1.5rem;
+}
+.table {
+    width: 100%;
+    table-layout: fixed;
+}
+.table th, .table td {
+    padding: 0.7em 0.5em;
+    word-break: break-word;
+}
+</style>

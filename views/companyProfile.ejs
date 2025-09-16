@@ -1,0 +1,44 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title"><%= company.name %></div>
+    <div class="header-actions">
+        <a href="/companies" class="btn btn-secondary"><i class="fas fa-arrow-left btn-icon"></i>Back to Companies</a>
+    </div>
+</div>
+<div class="company-profile">
+    <div class="company-info">
+        <div class="company-logo"><i class="fas fa-building"></i></div>
+        <h2><%= company.name %></h2>
+    <div><strong>Website:</strong> <a href="<%= company.website %>" target="_blank"><%= company.website %></a></div>
+    <div><strong>Address:</strong> <%= company.address %></div>
+    <div><strong>Industry:</strong> <%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></div>
+        <div class="social-links">
+            <% if (company.socials) { %>
+                <% if (company.socials.facebook) { %><a href="<%= company.socials.facebook %>" class="social-link" target="_blank"><i class="fab fa-facebook"></i></a><% } %>
+                <% if (company.socials.linkedin) { %><a href="<%= company.socials.linkedin %>" class="social-link" target="_blank"><i class="fab fa-linkedin"></i></a><% } %>
+                <% if (company.socials.twitter) { %><a href="<%= company.socials.twitter %>" class="social-link" target="_blank"><i class="fab fa-twitter"></i></a><% } %>
+                <% if (company.socials.instagram) { %><a href="<%= company.socials.instagram %>" class="social-link" target="_blank"><i class="fab fa-instagram"></i></a><% } %>
+            <% } %>
+        </div>
+    </div>
+    <div>
+        <h3>Employees</h3>
+        <ul>
+            <% contacts.forEach(function(contact) { %>
+                <li><%= contact.name %> - <%= contact.role %> (<%= contact.email %>)</li>
+            <% }) %>
+        </ul>
+        <h3>Assigned Workflows</h3>
+        <ul>
+            <% workflows.forEach(function(wf) { %>
+                <li><%= wf.name %></li>
+            <% }) %>
+        </ul>
+        <h3>Tasks</h3>
+        <ul>
+            <% tasks.forEach(function(task) { %>
+                <li><%= task.type %> - <%= task.status %> (Due: <%= task.due_date %>)</li>
+            <% }) %>
+        </ul>
+    </div>
+</div>

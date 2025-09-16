@@ -1,0 +1,95 @@
+<% layout('layout') %>
+<div class="header">
+    <div class="page-title">Dashboard</div>
+    <div class="header-actions">
+        <a href="/upload" class="btn btn-primary"><i class="fas fa-upload btn-icon"></i>Upload Companies</a>
+    </div>
+</div>
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.percentEnriched %>%</div>
+        <div class="stat-label">Enriched</div>
+        <div class="stat-icon"><i class="fas fa-percentage"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.totalCompanies %></div>
+        <div class="stat-label">Companies</div>
+        <div class="stat-icon"><i class="fas fa-building"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.totalTasks %></div>
+        <div class="stat-label">Tasks</div>
+        <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.completedTasks %></div>
+        <div class="stat-label">Completed</div>
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value"><%= stats.pendingTasks %></div>
+        <div class="stat-label">Pending</div>
+        <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Recent Activity</div>
+    <div class="card-body">
+        <% if (activity && activity.length) { %>
+            <% activity.slice(0,5).forEach(function(item) { %>
+                <div class="activity-item">
+                    <div class="activity-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <div>
+                        <div class="activity-title"><%= item.action %> <%= item.entity ? 'on ' + item.entity : '' %></div>
+                        <div class="activity-desc">By <%= item.actor_email || 'System' %> <%= item.details ? ('- ' + item.details) : '' %></div>
+                    </div>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <div>No recent activity.</div>
+        <% } %>
+        <% if (typeof lastEnrichment !== 'undefined' && lastEnrichment) { %>
+            <div class="activity-item" style="margin-top:1em;background:#f8f9fa;border-radius:6px;padding:0.7em 1em;">
+                <div class="activity-icon"><i class="fas fa-magic"></i></div>
+                <div>
+                    <div class="activity-title">Last Enrichment: <%= lastEnrichment.date %></div>
+                    <div class="activity-desc">Enriched: <%= lastEnrichment.count %> companies</div>
+                </div>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<% if (user && (user.role === 'admin' || user.role === 'manager') && enrichedCompanies && enrichedCompanies.length) { %>
+<div class="card" style="margin-top:2rem;">
+    <div class="card-header">Enriched & Partially Enriched Companies (Top 8)</div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Website</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% enrichedCompanies.forEach(function(company) { %>
+                    <tr>
+                        <td><%= company.name %></td>
+                        <td>
+                            <% if (company.website) { %>
+                                <a href="<%= company.website %>" target="_blank"><%= company.website %></a>
+                            <% } else { %>
+                                <span style="color:#aaa;">N/A</span>
+                            <% } %>
+                        </td>
+                        <td><span class="status-badge status-<%= company.status %>"><%= company.status %></span></td>
+                        <td><a href="/companies/<%= company.id %>" class="btn btn-sm btn-secondary">View</a></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+</div>
+<% } %>
