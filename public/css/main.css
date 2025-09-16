@@ -1,19 +1,127 @@
-/* Enrichment Status Badges */
-.status-enriched {
-    background-color: #e8f5e9;
-    color: #2e7d32;
+/* --- Custom input and button styles for professional look --- */
+.form-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+    color: var(--gray-700);
+    letter-spacing: 0.01em;
 }
-.status-partially_enriched {
-    background-color: #fffde7;
-    color: #fbc02d;
+.form-input {
+    width: 100%;
+    height: 40px;
+    padding: 0.6rem 1rem;
+    border: transparent;
+    border-radius: var(--border-radius);
+    font-size: 1.05rem;
+    background: transparent;
+    color: var(--gray-800);
+    transition: box-shadow 0.2s;
+    margin-bottom: 1.1rem;
+    box-shadow: none;
 }
-.status-failed, .status-scraping_failed, .status-website_not_found {
-    background-color: #ffcdd2;
-    color: #c62828;
+.form-input:focus {
+    background: #f5f7fa;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-light);
 }
-.status-incomplete {
-    background-color: #ffecb3;
-    color: #f57f17;
+.btn, button, input[type="submit"], input[type="button"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 2.2rem;
+    min-height: 38px;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 1.05rem;
+    background: var(--primary);
+    color: #fff;
+    box-shadow: var(--box-shadow);
+    transition: background 0.2s, box-shadow 0.2s;
+    margin: 0.2rem 0.2rem;
+}
+.btn:hover, button:hover, input[type="submit"]:hover, input[type="button"]:hover {
+    background: #2c4a6d;
+    box-shadow: var(--box-shadow-lg);
+}
+.btn-secondary {
+    background: white;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+}
+.btn-secondary:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+/* --- Custom styles for upload preview table --- */
+.upload-preview-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: white;
+    box-shadow: var(--box-shadow);
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+.upload-preview-table th, .upload-preview-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    text-align: left;
+}
+.upload-preview-table th {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 1rem;
+}
+.upload-preview-table tr:last-child td {
+    border-bottom: none;
+}
+.upload-preview-table input[type="text"],
+.upload-preview-table input[type="tel"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    background: var(--gray-100);
+    transition: border 0.2s;
+}
+.upload-preview-table input:focus {
+    border-color: var(--primary);
+    outline: none;
+    background: #fff;
+}
+.upload-preview-table .remove-row {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.4rem 0.9rem;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.upload-preview-table .remove-row:hover {
+    background: #a71d2a;
+}
+#save-btn, .save-btn {
+    margin-top: 1.2rem;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.7rem 2.2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    box-shadow: var(--box-shadow);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#save-btn:hover, .save-btn:hover {
+    background: #2c4a6d;
 }
 /* --- BEGIN: Full CSS from deepseek_html_20250911_c10797 (2).html --- */
 :root {
@@ -696,43 +804,41 @@ textarea.form-control {
         transform: translateX(-100%);
         width: 280px;
     }
+    
     .sidebar.open {
         transform: translateX(0);
     }
+    
     .main-content {
         margin-left: 0;
         width: 100%;
     }
+    
     .menu-toggle {
         display: block;
         margin-right: 1rem;
         font-size: 1.5rem;
         cursor: pointer;
     }
+    
     .stats-grid {
         grid-template-columns: 1fr;
     }
+    
     .filters {
         flex-direction: column;
     }
+    
     .search-box {
         min-width: 100%;
     }
+    
     .company-profile {
         grid-template-columns: 1fr;
     }
+
     .upload-area {
         padding: 1.5rem;
-    }
-    .table-container {
-        padding-left: 0;
-        padding-right: 0;
-        overflow-x: auto;
-    }
-    .table th, .table td {
-        padding: 0.5rem;
-        font-size: 0.85rem;
-        word-break: break-word;
     }
 }
 

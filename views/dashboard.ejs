@@ -36,7 +36,7 @@
     <div class="card-header">Recent Activity</div>
     <div class="card-body">
         <% if (activity && activity.length) { %>
-            <% activity.forEach(function(item) { %>
+            <% activity.slice(0,5).forEach(function(item) { %>
                 <div class="activity-item">
                     <div class="activity-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div>
@@ -47,6 +47,15 @@
             <% }) %>
         <% } else { %>
             <div>No recent activity.</div>
+        <% } %>
+        <% if (typeof lastEnrichment !== 'undefined' && lastEnrichment) { %>
+            <div class="activity-item" style="margin-top:1em;background:#f8f9fa;border-radius:6px;padding:0.7em 1em;">
+                <div class="activity-icon"><i class="fas fa-magic"></i></div>
+                <div>
+                    <div class="activity-title">Last Enrichment: <%= lastEnrichment.date %></div>
+                    <div class="activity-desc">Enriched: <%= lastEnrichment.count %> companies</div>
+                </div>
+            </div>
         <% } %>
     </div>
 </div>

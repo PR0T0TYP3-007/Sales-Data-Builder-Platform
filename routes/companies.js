@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { uploadAndParsePdf, getCompaniesController, enrichCompanyData, detectCompanyIndustry, bulkEnrichCompanies, bulkDetectIndustry } from '../controller/companyController.js';
+import { uploadAndExtract, saveExtractedCompanies, getCompaniesController, enrichCompanyData, bulkEnrichCompanies, bulkDetectIndustry } from '../controller/companyController.js';
 import { findAndSaveEmployees, getCompanyContacts, advancedFindEmployees, bulkFindEmployees } from '../controller/employeeController.js';
 import { scrapingRateLimiter } from '../middleware/rateLimit.js';
 // import { parseCompanyFile } from '../services/companyFinder.js';
@@ -8,35 +8,24 @@ import { bulkInsertCompanies } from '../models/Company.js';
 
 const router = express.Router();
 const upload = multer({ 
-  storage: multer.memoryStorage(),limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 1}
+    storage: multer.memoryStorage()
 });
 
-router.post('/upload', upload.single('file'), uploadAndParsePdf);
+// Extraction endpoint (returns preview, does not save)
+router.post('/extract', upload.single('companyFile'), uploadAndExtract);
+// Save endpoint (saves confirmed companies)
+router.post('/save', express.json(), saveExtractedCompanies);
 router.get('/', getCompaniesController);
 router.post('/:id/enrich', enrichCompanyData);
-router.post('/:id/detect-industry', detectCompanyIndustry);
 router.post('/:id/find-employees', findAndSaveEmployees);
 router.get('/:id/contacts', getCompanyContacts);
 router.post('/:id/advanced-find-employees', scrapingRateLimiter, advancedFindEmployees);
 router.post('/bulk-find-employees', bulkFindEmployees);
 router.get('/upload', (req, res) => {
-    res.render('upload', { title: 'Upload Companies', user: req.session.user });
+    res.render('upload', { title: 'Upload Companies', user: req.session.user, preview: null });
 });
 router.post('/bulk-enrich', bulkEnrichCompanies);
-router.post('/bulk-detect-industry', bulkDetectIndustry)
-router.post('/bulk-enrich', async (req, res) => {
-  try {
-    await bulkEnrichCompanies(req, res);
-  } catch (error) {
-    console.error('Error in bulk enrichment:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error during bulk enrichment'
-    });
-  }
-});
+router.post('/bulk-detect-industry', bulkDetectIndustry);
 
 router.post('/import', upload.single('companyFile'), async (req, res) => {
     try {

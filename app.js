@@ -3,8 +3,7 @@ import express from 'express';
 import session from 'express-session';
 import bodyParser from 'body-parser';
 import ejsMate from 'ejs-mate';
-import bcrypt from 'bcrypt';
-import pool from './database/db.js';
+import multer from 'multer';
 
 // Import model functions
 import { getAllCompanies } from './models/Company.js';
@@ -14,19 +13,21 @@ import { requireRole } from './middleware/auth.js';
 import { getAuditLogs } from './models/AuditLog.js';
 import { createGroup } from './models/Group.js';
 import { getAllTeamMembers } from './models/Auth.js';
+import { uploadAndExtract } from './controller/companyController.js';
+import { bulkEnrichCompanies } from './controller/companyController.js';
+import { getCompanyById } from './models/Company.js';
+import { getContactsByCompanyId } from './models/Contact.js';
+import { getWorkflowsByCompanyId } from './models/Workflow.js';
+import { getTasksByCompany } from './models/Task.js';
 
 // Import route files
-import companyRoutes from './routes/companies.js';
-import workflowRoutes from './routes/workflow.js';
-import taskRoutes from './routes/tasks.js';
-import groupRoutes from './routes/groups.js';
-import frontendRoutes from './routes/frontend.js';
 import authRoutes from './routes/auth.js';
 import auditLogRoutes from './routes/auditLogs.js';
 import analyticsRoutes from './routes/analytics.js';
 // Import middleware
 import { apiRateLimiter, scrapingRateLimiter, checkRobotsTxt } from './middleware/rateLimit.js';
 import errorHandler from './middleware/errorHandler.js';
+import companiesRoutes from './routes/companies.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -43,6 +44,7 @@ app.use(express.static('public'));
 app.use(checkRobotsTxt);
 app.use('/api/', apiRateLimiter);
 app.use('/api/scrape/', scrapingRateLimiter);
+app.use('/api/companies', companiesRoutes);
 
 // Session configuration
 app.use(session({
@@ -168,11 +170,6 @@ app.get('/companies', requireAuth, (req, res, next) => {
   }
 });
 
-// Company profile
-import { getCompanyById } from './models/Company.js';
-import { getContactsByCompanyId } from './models/Contact.js';
-import { getWorkflowsByCompanyId } from './models/Workflow.js';
-import { getTasksByCompany } from './models/Task.js';
 
 app.get('/companies/:id', requireAuth, async (req, res) => {
   try {
@@ -335,43 +332,33 @@ app.post('/tasks/:taskId/assign', requireAuth, async (req, res) => {
   }
 });
 
-// Upload page (GET: render, POST: upload)
-import multer from 'multer';
-import { uploadAndParsePdf } from './controller/companyController.js';
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024, files: 1 } });
 
 
-// Direct /upload GET route
+// /upload GET route for UI (keep for navigation, but POST is handled by /api/companies/extract)
 app.get('/upload', requireAuth, (req, res) => {
+  if (!req.session.user || req.session.user.role === 'team_member') {
+    return res.status(403).render('dashboard_team', { title: 'My Dashboard', stats: {}, recentTasks: [], user: req.session.user, error: 'Access denied.' });
+  }
   res.render('upload', { title: 'Upload Companies', user: req.session.user, preview: null, error: null });
 });
 
-// Direct /upload POST route
-app.post('/upload', requireAuth, upload.single('companyFile'), uploadAndParsePdf);
-
 
 // Enrich page (GET: render, POST: enrich)
-import { bulkEnrichCompanies } from './controller/companyController.js';
-
 app.get('/enrich', requireAuth, (req, res, next) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+    return res.status(403).render('dashboard', { error: 'Access denied.', user: req.session.user });
   }
   next();
 }, async (req, res) => {
-  try {
-    const companies = await getAllCompanies();
-    res.render('enrich', {
-      title: 'Enrichment Progress',
-      companies,
-      user: req.session.user
-    });
-  } catch (err) {
-    res.render('enrich', { title: 'Enrichment Progress', companies: [], user: req.session.user, error: err.message });
-  }
+  const companies = await getAllCompanies();
+  res.render('enrich', { title: 'Enrichment Progress', companies, user: req.session.user });
 });
-
-app.post('/enrich', requireAuth, bulkEnrichCompanies);
+app.post('/enrich', requireAuth, (req, res, next) => {
+  if (!req.session.user || req.session.user.role === 'team_member') {
+    return res.status(403).render('dashboard_team', { title: 'My Dashboard', stats: {}, recentTasks: [], user: req.session.user, error: 'Access denied.' });
+  }
+  next();
+}, bulkEnrichCompanies);
 
 app.get('/audit-logs', requireAuth, requireRole('manager'), async (req, res) => {
   try {

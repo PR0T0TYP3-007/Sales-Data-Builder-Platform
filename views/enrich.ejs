@@ -1,3 +1,13 @@
+<div id="enrichment-bar" style="display:none;position:fixed;top:32px;left:50%;transform:translateX(-50%);z-index:9999;">
+    <div style="background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);padding:1.5em 2.5em;min-width:340px;text-align:center;">
+        <div id="enrich-status-title" style="font-size:1.15em;font-weight:600;margin-bottom:0.7em;">Enrichment Started</div>
+        <div id="enrich-progress-bar" style="width:100%;height:18px;background:#e9ecef;border-radius:8px;overflow:hidden;margin-bottom:1em;">
+            <div id="enrich-progress-fill" style="height:100%;width:0%;background:#28a745;transition:width 0.3s;"></div>
+        </div>
+        <div id="enrich-progress-text" style="margin-bottom:1em;">0 of 0 enriched</div>
+        <button id="enrich-ok-btn" class="btn btn-success" style="display:none;">OK</button>
+    </div>
+</div>
 <% layout('layout') %>
 <div class="header">
     <div class="page-title">Enrichment Progress</div>
@@ -57,6 +67,32 @@
 
 <!-- Buttons moved to top of page -->
 <script>
+// Enrichment bar logic
+function showEnrichmentBar(total) {
+    document.getElementById('enrichment-bar').style.display = 'block';
+    document.getElementById('enrich-status-title').textContent = 'Enrichment Started';
+    document.getElementById('enrich-progress-fill').style.width = '0%';
+    document.getElementById('enrich-progress-text').textContent = `0 of ${total} enriched`;
+    document.getElementById('enrich-ok-btn').style.display = 'none';
+}
+function updateEnrichmentBar(done, total) {
+    const percent = total ? Math.round((done/total)*100) : 0;
+    document.getElementById('enrich-progress-fill').style.width = percent + '%';
+    document.getElementById('enrich-progress-text').textContent = `${done} of ${total} enriched`;
+}
+function finishEnrichmentBar(done, total) {
+    document.getElementById('enrich-status-title').textContent = 'Enrichment Complete';
+    document.getElementById('enrich-progress-fill').style.width = '100%';
+    document.getElementById('enrich-progress-text').textContent = `${done} of ${total} enriched`;
+    document.getElementById('enrich-ok-btn').style.display = 'inline-block';
+}
+document.getElementById('enrich-ok-btn').onclick = function() {
+    document.getElementById('enrichment-bar').style.display = 'none';
+};
+// Example usage: hook these into your enrichment AJAX logic
+// showEnrichmentBar(totalCompanies);
+// updateEnrichmentBar(doneCount, totalCompanies);
+// finishEnrichmentBar(doneCount, totalCompanies);
     // Select all checkboxes
     document.getElementById('select-all-companies').addEventListener('change', function() {
         const checked = this.checked;

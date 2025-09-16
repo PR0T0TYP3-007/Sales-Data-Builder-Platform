@@ -84,44 +84,77 @@ const enrichCompany = async (name, address, phone) => {
   const query = `${name} ${address} ${phone}`;
   const results = await searchDuckDuckGo(query);
   const website = results[0] || null;
-  let { socials, email, description } = { socials: {}, email: null, description: "" };
+  let socials = {}, email = null, description = "", html = "";
+  let emails = [], phones = [];
+  let employees = [];
   if (website) {
     console.log(`[Enrichment] Found website: ${website}`);
-    ({ socials, email, description } = await crawlWebsite(website));
+    const crawlResult = await crawlWebsite(website);
+    socials = crawlResult.socials;
+    email = crawlResult.email;
+    description = crawlResult.description;
+    html = crawlResult.html || "";
+    // Extract additional emails/phones from HTML
+    if (html) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+      const phoneRegex = /(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?)?\d{3}[\s.-]?\d{4}/g;
+      emails = Array.from(new Set((html.match(emailRegex) || [])));
+      phones = Array.from(new Set((html.match(phoneRegex) || [])));
+    }
+    // Find employees by crawling about/team pages
+    try {
+      const employeePages = ["about", "team", "leadership", "our-people", "management"];
+      for (let path of employeePages) {
+        try {
+          const res = await axios.get(`${website.replace(/\/$/, "")}/${path}`, { headers: HEADERS, timeout: 10000 });
+          const $ = cheerio.load(res.data);
+          $("p, h2, h3, li").each((_, el) => {
+            const text = $(el).text().trim();
+            if (
+              text.match(/[A-Z][a-z]+ [A-Z][a-z]+/) &&
+              (text.includes("CEO") || text.includes("Manager") || text.includes("Director") || text.includes("Officer") || text.includes("President"))
+            ) {
+              employees.push({ raw: text });
+            }
+          });
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('[Enrichment] Employee enrichment failed:', err.message);
+    }
   } else {
     console.log(`[Enrichment] No website found for: ${name}`);
   }
+  // Always include the direct email/phone if present
+  if (email && !emails.includes(email)) emails.unshift(email);
+  if (phone && !phones.includes(phone)) phones.unshift(phone);
+  // Remove duplicates
+  emails = Array.from(new Set(emails));
+  phones = Array.from(new Set(phones));
   const industry = inferIndustry(description);
   // Determine enrichment status
   let status = "incomplete";
   const hasSocials = socials && (socials.linkedin || socials.facebook || socials.twitter || socials.instagram);
   if (website || hasSocials) {
     status = "enriched";
-  } else if (email || description || industry) {
+  } else if (emails.length || description || industry) {
     status = "partially_enriched";
   }
-  console.log(`[Enrichment] Final enrichment result:`, {
+  const result = {
     companyName: name,
     address,
     phone,
     website,
-    email,
     socials,
-    description,
-    industry,
-    status
-  });
-  return {
-    companyName: name,
-    address,
-    phone,
-    website,
-    email,
-    socials,
+    emails,
+    phones,
+    employees,
     description,
     industry,
     status
   };
+  console.log(`[Enrichment] Final enrichment result:`, result);
+  return result;
 };
 
 export default enrichCompany;

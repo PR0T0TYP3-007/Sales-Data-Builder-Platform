@@ -1,3 +1,33 @@
+// DuckDuckGo employee search
+import { parse as parseHTML } from 'node-html-parser';
+const searchDuckDuckGoEmployees = async (companyName) => {
+  const employees = [];
+  try {
+    const query = encodeURIComponent(`${companyName} employees`);
+    const url = `https://duckduckgo.com/html/?q=${query}`;
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    const root = parseHTML(response.data);
+    const results = root.querySelectorAll('.result');
+    for (const result of results) {
+      const text = result.text.trim();
+      // Simple regex to find patterns like: Name - Role at Company
+      const match = text.match(/([A-Z][a-z]+ [A-Z][a-z]+)[^\w]+([\w\s]+) at/i);
+      if (match) {
+        const name = match[1];
+        const role = match[2].trim();
+        employees.push({ name, role, source: url });
+      }
+    }
+  } catch (err) {
+    // Ignore errors, just return what we found
+  }
+  return employees;
+};
 import axios from 'axios';
 import { parse } from 'node-html-parser';
 import { createContact } from '../models/Contact.js';
@@ -56,10 +86,30 @@ const findEmployees = async (companyId, companyName, websiteUrl, location = '') 
         for (const element of employeeElements) {
           const nameElement = element.querySelector('h2, h3, h4, [class*="name"], .name');
           const roleElement = element.querySelector('[class*="title"], .title, .position, [class*="role"]');
+          const phoneElement = element.querySelector('[href^="tel:"], .phone, [class*="phone"], [data-phone]');
+          const emailElement = element.querySelector('[href^="mailto:"], .email, [class*="email"], [data-email]');
+          const deptElement = element.querySelector('.department, [class*="department"], [data-department]');
           const name = nameElement ? nameElement.text.trim() : null;
           const role = roleElement ? roleElement.text.trim() : null;
+          let phone = null;
+          if (phoneElement) {
+            if (phoneElement.getAttribute('href')) {
+              phone = phoneElement.getAttribute('href').replace('tel:', '').trim();
+            } else {
+              phone = phoneElement.text.trim();
+            }
+          }
+          let email = null;
+          if (emailElement) {
+            if (emailElement.getAttribute('href')) {
+              email = emailElement.getAttribute('href').replace('mailto:', '').trim();
+            } else {
+              email = emailElement.text.trim();
+            }
+          }
+          const department = deptElement ? deptElement.text.trim() : null;
           if (name && name.length > 2) {
-            employees.push({ name, role, source: teamUrl });
+            employees.push({ name, role, phone, email, department, source: teamUrl });
           }
         }
         if (employees.length > 0) break;
@@ -78,11 +128,12 @@ const findEmployees = async (companyId, companyName, websiteUrl, location = '') 
     }
   } catch (error) {}
 
-  // 2. Advanced sources: government, press releases, social media
+  // 2. Advanced sources: government, press releases, social media, DuckDuckGo
   const advancedSources = await Promise.allSettled([
     searchGovernmentRecords(companyName, location),
     searchPressReleases(companyName),
-    searchSocialMediaMentions(companyName)
+    searchSocialMediaMentions(companyName),
+    searchDuckDuckGoEmployees(companyName)
   ]);
   for (const result of advancedSources) {
     if (result.status === 'fulfilled') {

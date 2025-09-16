@@ -2,36 +2,39 @@
 <div class="header">
     <div class="page-title">Upload Companies</div>
 </div>
-<form id="upload-form" enctype="multipart/form-data" method="POST" action="/upload">
+<form id="upload-form" enctype="multipart/form-data" method="POST" action="#">
     <div class="upload-area" id="upload-area">
         <div class="upload-icon"><i class="fas fa-upload"></i></div>
-        <h3>Drag & drop PDF, CSV, or Excel files here</h3>
+    <h3>Drag & drop PDF, CSV, or Excel files here</h3>
         <input type="file" id="file-input" name="companyFile" style="display:none;" accept=".pdf,.csv,.xlsx,.xls">
     </div>
 </form>
 <div class="file-list" id="file-list">
     <% if (preview && preview.length) { %>
-        <h4>Preview Extracted Companies</h4>
-        <table class="table">
+        <h4 style="margin-bottom:1.2rem; color: var(--primary); font-weight:600; font-size:1.2rem;">Preview Extracted Companies</h4>
+        <form id="save-form">
+        <table class="upload-preview-table">
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Address</th>
-                    <th>Description</th>
+                    <th></th>
                 </tr>
             </thead>
-            <tbody>
-                <% preview.forEach(function(company) { %>
+            <tbody id="preview-tbody">
+                <% preview.forEach(function(company, idx) { %>
                     <tr>
-                        <td><%= company.name %></td>
-                        <td><%= company.phone %></td>
-                        <td><%= company.address %></td>
-                        <td><%= company.description %></td>
+                        <td><input name="name" type="text" class="form-input" value="<%= company.name %>" data-idx="<%= idx %>" /></td>
+                        <td><input name="phone" type="tel" class="form-input" value="<%= company.phone %>" data-idx="<%= idx %>" /></td>
+                        <td><input name="address" type="text" class="form-input" value="<%= company.address %>" data-idx="<%= idx %>" /></td>
+                        <td><button type="button" class="remove-row btn btn-secondary" data-idx="<%= idx %>">Remove</button></td>
                     </tr>
                 <% }) %>
             </tbody>
         </table>
+    <button type="submit" id="save-btn" class="save-btn btn">Save Companies</button>
+        </form>
     <% } %>
 </div>
 <% if (error) { %>
@@ -71,21 +74,21 @@
         formData.append('companyFile', fileInput.files[0]);
         // Show uploading status
         uploadArea.classList.add('uploading');
-        fetch('/upload', {
+        fetch('/api/companies/extract', {
             method: 'POST',
             body: formData
         })
-        .then(res => res.text())
-        .then(html => {
-            // Replace the file-list div with the new preview from server
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            const newFileList = doc.getElementById('file-list');
-            if (newFileList) fileList.innerHTML = newFileList.innerHTML;
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.companies) {
+                renderPreviewTable(data.companies);
+            } else {
+                alert('No companies extracted.');
+            }
             uploadArea.classList.remove('uploading');
         })
         .catch(err => {
-            alert('Upload failed: ' + err.message);
+            alert('Upload failed: ' + err.message + '\nExtraction is now local only.');
             uploadArea.classList.remove('uploading');
         });
     }
@@ -94,4 +97,55 @@
     uploadForm.addEventListener('submit', function(e) {
         e.preventDefault();
     });
+
+    // Render preview table for editing
+    function renderPreviewTable(companies) {
+        let html = `<h4>Preview Extracted Companies (Edit before saving)</h4><form id='save-form'><table class='table'><thead><tr><th>Name</th><th>Phone</th><th>Address</th><th></th></tr></thead><tbody id='preview-tbody'>`;
+        companies.forEach((c, idx) => {
+            html += `<tr><td><input name='name' class='form-input' value='${c.name || ''}' data-idx='${idx}' /></td><td><input name='phone' class='form-input' value='${c.phone || ''}' data-idx='${idx}' /></td><td><input name='address' class='form-input' value='${c.address || ''}' data-idx='${idx}' /></td><td><button type='button' class='remove-row' data-idx='${idx}'>Remove</button></td></tr>`;
+        });
+        html += `</tbody></table><button type='submit' id='save-btn'>Save Companies</button></form>`;
+        fileList.innerHTML = html;
+        attachPreviewEvents();
+    }
+
+    // Attach events for editing/removing rows and saving
+    function attachPreviewEvents() {
+        const saveForm = document.getElementById('save-form');
+        if (saveForm) {
+            saveForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const rows = Array.from(document.querySelectorAll('#preview-tbody tr'));
+                const companies = rows.map(row => {
+                    const inputs = row.querySelectorAll('input');
+                    return {
+                        name: inputs[0].value,
+                        phone: inputs[1].value,
+                        address: inputs[2].value
+                    };
+                }).filter(c => c.name && c.name.length > 0);
+                fetch('/api/companies/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companies })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        fileList.innerHTML = `<div class='status-badge status-success'>${data.message}</div>`;
+                    } else {
+                        fileList.innerHTML = `<div class='status-badge status-error'>Failed to save companies.</div>`;
+                    }
+                });
+            });
+        }
+        // Remove row
+        document.querySelectorAll('.remove-row').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const idx = this.getAttribute('data-idx');
+                const row = this.closest('tr');
+                if (row) row.remove();
+            });
+        });
+    }
 </script>

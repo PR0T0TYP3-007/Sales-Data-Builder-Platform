@@ -1,4 +1,5 @@
 import { searchAllDirectories } from './directorySearch.js';
+import { removeDuplicateCompaniesByName } from '../models/Company.js';
 import { searchAllSocials } from './socialSearch.js';
 
 class SimpleQueue {
@@ -129,6 +130,9 @@ import { nlpExtractLinks } from './nlpExtractLinks.js';
  * Updates company record with website and socials.
  */
 simpleQueue.process('company_enrichment', 3, async (job) => {
+  // Deduplicate before enrichment
+  console.log('[QUEUE] Checking for and removing duplicate companies before enrichment...');
+  await removeDuplicateCompaniesByName();
   const { companyId, url, userId, companyName } = job.data;
   try {
     console.log(`[QUEUE] Processing enrichment job for companyId=${companyId}, url=${url}, userId=${userId}, companyName=${companyName}`);
@@ -228,7 +232,7 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
     } else {
       console.log(`[QUEUE] No website found for companyId=${companyId}, skipping scrape. Returning empty socials.`);
     }
-    // Update website, socials, and enrichment status columns
+    // Update website, socials, phone, address, and enrichment status columns
     const updateFields = { status: enrichmentStatus };
     if (websiteToUse) {
       updateFields.website = websiteToUse;
@@ -236,6 +240,17 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
     if (scrapedData.socialLinks) {
       updateFields.socials = JSON.stringify(scrapedData.socialLinks);
     }
+    // Recheck and update phone/address if new values found
+    if (finderResult && finderResult.phones && finderResult.phones.length > 0) {
+      updateFields.phone = finderResult.phones[0];
+    } else if (scrapedData.phone) {
+      updateFields.phone = scrapedData.phone;
+    }
+    if (finderResult && finderResult.address && finderResult.address.length > 5) {
+      updateFields.address = finderResult.address;
+    }
+    // Log updateFields before updating the company
+    console.log(`[QUEUE] updateCompany called for companyId=${companyId} with fields:`, updateFields);
     await updateCompany(companyId, updateFields);
     await createAuditLog(
       userId,
@@ -245,6 +260,49 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
       null,      // sub-target (not used)
       { website: updateFields.website, socials: updateFields.socials }
     );
+
+    // --- EMPLOYEE/CONTACT ENRICHMENT ---
+    try {
+      // Dynamically import employeeFinder to avoid circular deps
+      const { findEmployees } = await import('./employeeFinder.js');
+      // Use companyName, websiteToUse, and address if available
+      const empResult = await findEmployees(companyId, companyName, websiteToUse || scrapedData.url || url, address);
+      // If advancedEmployeeFinder exists, call it as well (optional, skip if not found)
+      let advancedEmployees = [];
+      try {
+        const { advancedEmployeeFinder } = await import('./advancedEmployeeFinder.js');
+        const adv = await advancedEmployeeFinder(companyName, websiteToUse || scrapedData.url || url, address);
+        if (Array.isArray(adv)) advancedEmployees = adv;
+      } catch (e) { /* ignore if not present */ }
+      // Merge and deduplicate by name (case-insensitive)
+      const allEmployees = [...(empResult.employees || []), ...advancedEmployees];
+      const seenNames = new Set();
+      for (const emp of allEmployees) {
+        if (!emp.name || typeof emp.name !== 'string' || emp.name.trim().length < 2) continue;
+        const normName = emp.name.trim().toLowerCase();
+        if (seenNames.has(normName)) continue;
+        seenNames.add(normName);
+        // Save contact with all available info
+        try {
+          const { createContact } = await import('../models/Contact.js');
+          await createContact(
+            companyId,
+            emp.name,
+            emp.role || null,
+            emp.email || null,
+            emp.phone || null,
+            emp.department || null,
+            emp.linkedin_url || null,
+            emp.source || 'enrichment'
+          );
+        } catch (contactErr) {
+          console.error(`[QUEUE] Failed to save contact for companyId=${companyId}:`, emp, contactErr);
+        }
+      }
+      console.log(`[QUEUE] Saved ${seenNames.size} contacts for companyId=${companyId}`);
+    } catch (empEnrichErr) {
+      console.error(`[QUEUE] Employee enrichment failed for companyId=${companyId}:`, empEnrichErr);
+    }
     console.log(`✅ Enriched company ${companyId} (${companyName})`);
   } catch (error) {
     console.error('[QUEUE] Company enrichment job failed:', error);
