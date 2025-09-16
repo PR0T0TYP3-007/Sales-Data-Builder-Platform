@@ -6,7 +6,7 @@ import ejsMate from 'ejs-mate';
 import multer from 'multer';
 
 // Import model functions
-import { getAllCompanies } from './models/Company.js';
+import { getAllCompanies, getCompaniesPaginated, getCompaniesCount } from './models/Company.js';
 import { getAllTasks } from './models/Task.js';
 import { getAllWorkflows } from './models/Workflow.js';
 import { requireRole } from './middleware/auth.js';
@@ -152,21 +152,29 @@ app.get('/dashboard', requireAuth, async (req, res) => {
 });
 
 // Companies list
-app.get('/companies', requireAuth, (req, res, next) => {
+app.get('/companies', requireAuth, async (req, res, next) => {
   if (req.session.user && req.session.user.role === 'team_member') {
     return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
   }
-  next();
-}, async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = 15;
+  const search = req.query.search ? req.query.search.trim() : '';
   try {
-    const companies = await getAllCompanies();
+    const [companies, total] = await Promise.all([
+      getCompaniesPaginated(page, limit, search || null),
+      getCompaniesCount(search || null)
+    ]);
+    const totalPages = Math.ceil(total / limit);
     res.render('companies', {
       title: 'Companies',
       companies,
-      user: req.session.user
+      user: req.session.user,
+      page,
+      totalPages,
+      search
     });
   } catch (err) {
-    res.render('companies', { title: 'Companies', companies: [], user: req.session.user, error: err.message });
+    res.render('companies', { title: 'Companies', companies: [], user: req.session.user, error: err.message, page: 1, totalPages: 1, search });
   }
 });
 
@@ -344,14 +352,26 @@ app.get('/upload', requireAuth, (req, res) => {
 
 
 // Enrich page (GET: render, POST: enrich)
-app.get('/enrich', requireAuth, (req, res, next) => {
+app.get('/enrich', requireAuth, async (req, res, next) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
     return res.status(403).render('dashboard', { error: 'Access denied.', user: req.session.user });
   }
-  next();
-}, async (req, res) => {
-  const companies = await getAllCompanies();
-  res.render('enrich', { title: 'Enrichment Progress', companies, user: req.session.user });
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = 15;
+  const search = req.query.search ? req.query.search.trim() : '';
+  const [companies, total] = await Promise.all([
+    getCompaniesPaginated(page, limit, search || null),
+    getCompaniesCount(search || null)
+  ]);
+  const totalPages = Math.ceil(total / limit);
+  res.render('enrich', {
+    title: 'Enrichment Progress',
+    companies,
+    user: req.session.user,
+    page,
+    totalPages,
+    search
+  });
 });
 app.post('/enrich', requireAuth, (req, res, next) => {
   if (!req.session.user || req.session.user.role === 'team_member') {

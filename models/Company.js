@@ -15,18 +15,42 @@ const removeDuplicateCompaniesByName = async () => {
     }
   }
 };
-// Get companies with pagination
-const getCompaniesPaginated = async (page = 1, limit = 15) => {
+// Get companies with pagination and optional search
+const getCompaniesPaginated = async (page = 1, limit = 15, search = null) => {
   const offset = (page - 1) * limit;
-  const query = `SELECT * FROM companies WHERE product_id = 1 ORDER BY id LIMIT $1 OFFSET $2;`;
-  const result = await pool.query(query, [limit, offset]);
+  let query = `SELECT * FROM companies WHERE product_id = 1`;
+  let params = [];
+  if (search) {
+    query += ` AND (
+      LOWER(name) LIKE $1 OR
+      LOWER(COALESCE(website, '')) LIKE $1 OR
+      LOWER(COALESCE(phone, '')) LIKE $1 OR
+      LOWER(COALESCE(address, '')) LIKE $1 OR
+      LOWER(COALESCE(industry, '')) LIKE $1
+    )`;
+    params.push(`%${search.toLowerCase()}%`);
+  }
+  query += ` ORDER BY id LIMIT $${params.length + 1} OFFSET $${params.length + 2};`;
+  params.push(limit, offset);
+  const result = await pool.query(query, params);
   return result.rows;
 };
 
-// Get total count for pagination
-const getCompaniesCount = async () => {
-  const query = `SELECT COUNT(*) FROM companies WHERE product_id = 1;`;
-  const result = await pool.query(query);
+// Get total count for pagination and optional search
+const getCompaniesCount = async (search = null) => {
+  let query = `SELECT COUNT(*) FROM companies WHERE product_id = 1`;
+  let params = [];
+  if (search) {
+    query += ` AND (
+      LOWER(name) LIKE $1 OR
+      LOWER(COALESCE(website, '')) LIKE $1 OR
+      LOWER(COALESCE(phone, '')) LIKE $1 OR
+      LOWER(COALESCE(address, '')) LIKE $1 OR
+      LOWER(COALESCE(industry, '')) LIKE $1
+    )`;
+    params.push(`%${search.toLowerCase()}%`);
+  }
+  const result = await pool.query(query, params);
   return parseInt(result.rows[0].count, 10);
 };
 import pool from '../database/db.js';

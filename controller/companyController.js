@@ -1,6 +1,5 @@
 import Tesseract from 'tesseract.js';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-
 // --- Utilities for robust extraction ---
 function normalizeLine(s) {
   if (!s) return '';
