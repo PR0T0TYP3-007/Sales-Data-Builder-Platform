@@ -179,15 +179,17 @@ app.get('/companies', requireAuth, async (req, res, next) => {
 });
 
 
+import { getGroupsByCompanyId } from './models/CompanyGroups.js';
 app.get('/companies/:id', requireAuth, async (req, res) => {
   try {
     const company = await getCompanyById(req.params.id);
     const contacts = await getContactsByCompanyId(req.params.id);
     const workflows = await getWorkflowsByCompanyId(req.params.id);
     const tasks = await getTasksByCompany(req.params.id);
-    res.render('companyProfile', { title: 'Company Profile', company, contacts, workflows, tasks, user: req.session.user });
+    const groups = await getGroupsByCompanyId(req.params.id);
+    res.render('companyProfile', { title: 'Company Profile', company, contacts, workflows, tasks, groups, user: req.session.user });
   } catch (err) {
-    res.render('companyProfile', { title: 'Company Profile', company: {}, contacts: [], workflows: [], tasks: [], user: req.session.user, error: err.message });
+    res.render('companyProfile', { title: 'Company Profile', company: {}, contacts: [], workflows: [], tasks: [], groups: [], user: req.session.user, error: err.message });
   }
 });
 
@@ -364,21 +366,63 @@ app.get('/enrich', requireAuth, async (req, res, next) => {
     getCompaniesCount(search || null)
   ]);
   const totalPages = Math.ceil(total / limit);
+  const flash = req.session.flash;
+  delete req.session.flash;
   res.render('enrich', {
     title: 'Enrichment Progress',
     companies,
     user: req.session.user,
     page,
     totalPages,
-    search
+    search,
+    flash
   });
 });
-app.post('/enrich', requireAuth, (req, res, next) => {
+app.post('/enrich', requireAuth, async (req, res, next) => {
   if (!req.session.user || req.session.user.role === 'team_member') {
     return res.status(403).render('dashboard_team', { title: 'My Dashboard', stats: {}, recentTasks: [], user: req.session.user, error: 'Access denied.' });
   }
-  next();
-}, bulkEnrichCompanies);
+  try {
+    // Call the enrichment logic directly
+    const { companyIds } = req.body;
+    // If only one selected, companyIds may be a string
+    let ids = companyIds;
+    if (typeof ids === 'string') ids = [ids];
+    if (!ids || !Array.isArray(ids)) {
+      req.session.flash = { type: 'danger', message: 'No companies selected.' };
+      return res.redirect('/enrich');
+    }
+    // Call the enrichment logic (simulate controller)
+    const userId = req.session.user.id;
+    const results = [];
+    const { getCompanyById, updateCompany } = await import('./models/Company.js');
+    const { webScrapingQueue } = await import('./services/queue.js');
+    for (const companyId of ids) {
+      try {
+        const company = await getCompanyById(companyId);
+        if (company) {
+          await webScrapingQueue.add({
+            type: 'company_enrichment',
+            companyId: companyId,
+            companyName: company.name,
+            url: company.website || null,
+            userId: userId
+          }, { attempts: 2, timeout: 180000 });
+          results.push({ companyId, status: 'queued' });
+        } else {
+          results.push({ companyId, status: 'skipped', reason: 'Company not found' });
+        }
+      } catch (error) {
+        results.push({ companyId, status: 'error', reason: error.message });
+      }
+    }
+    req.session.flash = { type: 'success', message: `Enrichment queued for ${results.length} companies.` };
+    return res.redirect('/enrich');
+  } catch (error) {
+    req.session.flash = { type: 'danger', message: 'Error during enrichment: ' + error.message };
+    return res.redirect('/enrich');
+  }
+});
 
 app.get('/audit-logs', requireAuth, requireRole('manager'), async (req, res) => {
   try {

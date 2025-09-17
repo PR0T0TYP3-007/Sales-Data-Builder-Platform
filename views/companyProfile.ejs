@@ -1,44 +1,155 @@
+
 <% layout('layout') %>
-<div class="header">
+<style>
+.profile-main {
+    max-width: 1100px;
+    margin: 2.5em auto;
+    display: flex;
+    gap: 2.5em;
+}
+.profile-sidebar {
+    flex: 1.1;
+    min-width: 260px;
+    background: #f8fafc;
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    padding: 2em 1.5em 1.5em 1.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.profile-logo {
+    font-size: 4em;
+    color: #2563eb;
+    margin-bottom: 0.7em;
+}
+.profile-title {
+    font-size: 2em;
+    font-weight: 600;
+    margin-bottom: 0.5em;
+    text-align: center;
+}
+.profile-details {
+    width: 100%;
+    margin-bottom: 1.5em;
+}
+.profile-details div {
+    margin-bottom: 0.7em;
+    font-size: 1.05em;
+}
+.profile-socials a {
+    margin-right: 0.5em;
+    font-size: 1.5em;
+    color: #2563eb;
+    transition: color 0.2s;
+}
+.profile-socials a:hover {
+    color: #1d4ed8;
+}
+.profile-section {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    margin-bottom: 2em;
+    padding: 1.5em 2em;
+}
+.profile-section h3 {
+    color: #2563eb;
+    margin-bottom: 1em;
+    font-size: 1.25em;
+    font-weight: 600;
+}
+.info-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.info-list li {
+    margin-bottom: 0.6em;
+    font-size: 1.05em;
+}
+.group-badge {
+    display: inline-block;
+    background: #e0e7ef;
+    color: #2563eb;
+    border-radius: 6px;
+    padding: 0.22em 0.9em;
+    margin-right: 0.5em;
+    margin-bottom: 0.3em;
+    font-size: 1em;
+    font-weight: 500;
+}
+@media (max-width: 900px) {
+    .profile-main { flex-direction: column; gap: 1.5em; }
+    .profile-sidebar { flex: unset; min-width: unset; }
+}
+</style>
+<div class="header" style="margin-bottom:1.5em;">
     <div class="page-title"><%= company.name %></div>
     <div class="header-actions">
         <a href="/companies" class="btn btn-secondary"><i class="fas fa-arrow-left btn-icon"></i>Back to Companies</a>
     </div>
 </div>
-<div class="company-profile">
-    <div class="company-info">
-        <div class="company-logo"><i class="fas fa-building"></i></div>
-        <h2><%= company.name %></h2>
-    <div><strong>Website:</strong> <a href="<%= company.website %>" target="_blank"><%= company.website %></a></div>
-    <div><strong>Address:</strong> <%= company.address %></div>
-    <div><strong>Industry:</strong> <%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></div>
-        <div class="social-links">
+<div class="profile-main">
+    <div class="profile-sidebar">
+        <div class="profile-logo"><i class="fas fa-building"></i></div>
+        <div class="profile-title"><%= company.name %></div>
+        <div class="profile-details">
+            <div><i class="fas fa-globe"></i> <strong>Website:</strong> <a href="<%= company.website %>" target="_blank"><%= company.website %></a></div>
+            <div><i class="fas fa-map-marker-alt"></i> <strong>Address:</strong> <%= company.address %></div>
+            <div><i class="fas fa-industry"></i> <strong>Industry:</strong> <%= company.industry ? company.industry.charAt(0).toUpperCase() + company.industry.slice(1) : 'N/A' %></div>
+            <div><i class="fas fa-info-circle"></i> <strong>Status:</strong> <%= company.status ? company.status.charAt(0).toUpperCase() + company.status.slice(1) : 'N/A' %></div>
+            <div><i class="fas fa-align-left"></i> <strong>Description:</strong> <%= company.description || 'N/A' %></div>
+        </div>
+        <div class="profile-socials">
             <% if (company.socials) { %>
-                <% if (company.socials.facebook) { %><a href="<%= company.socials.facebook %>" class="social-link" target="_blank"><i class="fab fa-facebook"></i></a><% } %>
-                <% if (company.socials.linkedin) { %><a href="<%= company.socials.linkedin %>" class="social-link" target="_blank"><i class="fab fa-linkedin"></i></a><% } %>
-                <% if (company.socials.twitter) { %><a href="<%= company.socials.twitter %>" class="social-link" target="_blank"><i class="fab fa-twitter"></i></a><% } %>
-                <% if (company.socials.instagram) { %><a href="<%= company.socials.instagram %>" class="social-link" target="_blank"><i class="fab fa-instagram"></i></a><% } %>
+                <% if (company.socials.facebook) { %><a href="<%= company.socials.facebook %>" class="social-link" target="_blank" title="Facebook"><i class="fab fa-facebook"></i></a><% } %>
+                <% if (company.socials.linkedin) { %><a href="<%= company.socials.linkedin %>" class="social-link" target="_blank" title="LinkedIn"><i class="fab fa-linkedin"></i></a><% } %>
+                <% if (company.socials.twitter) { %><a href="<%= company.socials.twitter %>" class="social-link" target="_blank" title="Twitter"><i class="fab fa-twitter"></i></a><% } %>
+                <% if (company.socials.instagram) { %><a href="<%= company.socials.instagram %>" class="social-link" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a><% } %>
+            <% } %>
+        </div>
+        <div class="profile-section" style="margin-top:2em;">
+            <h3>Related Groups</h3>
+            <% if (groups && groups.length) { %>
+                <% groups.forEach(function(group) { %>
+                    <span class="group-badge"><%= group.name %></span>
+                <% }) %>
+            <% } else { %>
+                <span style="color:#888;">No groups assigned.</span>
             <% } %>
         </div>
     </div>
-    <div>
-        <h3>Employees</h3>
-        <ul>
-            <% contacts.forEach(function(contact) { %>
-                <li><%= contact.name %> - <%= contact.role %> (<%= contact.email %>)</li>
-            <% }) %>
-        </ul>
-        <h3>Assigned Workflows</h3>
-        <ul>
-            <% workflows.forEach(function(wf) { %>
-                <li><%= wf.name %></li>
-            <% }) %>
-        </ul>
-        <h3>Tasks</h3>
-        <ul>
-            <% tasks.forEach(function(task) { %>
-                <li><%= task.type %> - <%= task.status %> (Due: <%= task.due_date %>)</li>
-            <% }) %>
-        </ul>
+    <div style="flex:2;min-width:320px;">
+        <div class="profile-section">
+            <h3><i class="fas fa-users"></i> Employees</h3>
+            <% if (contacts && contacts.length) { %>
+                <ul class="info-list">
+                    <% contacts.forEach(function(contact) { %>
+                        <li>
+                            <strong><i class="fas fa-user"></i> <%= contact.name %></strong>
+                            <% if (contact.role) { %> - <span style="color:#2563eb;"><%= contact.role %></span><% } %>
+                            <% if (contact.email) { %> <i class="fas fa-envelope" title="Email"></i> <a href="mailto:<%= contact.email %>"><%= contact.email %></a><% } %>
+                            <% if (contact.phone) { %> <i class="fas fa-phone" title="Phone"></i> <a href="tel:<%= contact.phone %>"><%= contact.phone %></a><% } %>
+                        </li>
+                    <% }) %>
+                </ul>
+            <% } else { %>
+                <span style="color:#888;">No employees found.</span>
+            <% } %>
+        </div>
+        <div class="profile-section">
+            <h3><i class="fas fa-project-diagram"></i> Assigned Workflows</h3>
+            <% if (workflows && workflows.length) { %>
+                <ul class="info-list">
+                    <% workflows.forEach(function(wf) { %>
+                        <li><i class="fas fa-tasks"></i> <%= wf.name %></li>
+                    <% }) %>
+                </ul>
+            <% } else { %>
+                <span style="color:#888;">No workflows assigned.</span>
+            <% } %>
+        </div>
+            <!-- Tasks section removed as requested -->
     </div>
 </div>

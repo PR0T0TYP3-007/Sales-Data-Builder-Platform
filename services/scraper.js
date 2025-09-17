@@ -30,10 +30,15 @@ const scrapeWebsiteData = async (url) => {
     const ogDescription = root.querySelector('meta[property="og:description"]');
     const ogImage = root.querySelector('meta[property="og:image"]');
 
-    // Extract phone numbers
-    const phoneRegex = /(\+?\d{1,2}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g;
+    // Extract phone numbers (only those with 11-13 digits, ignoring symbols)
+    const phoneRegex = /(\+?\d[\d\s().-]{9,20}\d)/g;
     const textContent = root.text;
-    const phoneMatches = textContent.match(phoneRegex) || [];
+    let phoneMatches = textContent.match(phoneRegex) || [];
+    // Filter to only those with 11-13 digits
+    phoneMatches = phoneMatches.filter(num => {
+      const digits = num.replace(/\D/g, '');
+      return digits.length >= 11 && digits.length <= 13;
+    });
 
     // Extract emails
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;

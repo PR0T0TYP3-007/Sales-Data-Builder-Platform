@@ -498,69 +498,128 @@ const enrichCompanyData = async (req, res) => {
     }
     // Update status to 'enriching'
     await updateCompanyStatus(companyId, 'enriching');
-    const existingData = {
-      description: company.description || null,
-      phone: company.phone || null,
-      email: null,
-      industry: company.industry || null
-    };
     console.log('[ENRICH] Starting enrichment for company:', company.name, 'ID:', companyId);
     const enrichedData = await enrichCompany(
       company.name,
       company.address,
       company.phone
     );
-    // Update company with all enriched fields
-    // Only update phone/address if new values are found, otherwise keep existing
-    let newPhone = (enrichedData.phones && enrichedData.phones.length > 0) ? enrichedData.phones[0] : company.phone;
+    // If crawl error is a timeout, skip this company
+    if (enrichedData && enrichedData.crawlError && enrichedData.crawlError.includes('timeout of 10000ms exceeded')) {
+      console.log(`[ENRICH] Skipping company due to crawl timeout: ${company.name} (ID: ${companyId})`);
+      await updateCompanyStatus(companyId, 'skipped_timeout');
+      return res.status(200).json({
+        message: 'Skipped enrichment due to crawl timeout.',
+        company: company,
+        skipped: true
+      });
+    }
+    // --- Filter, deduplicate, and rank enriched data ---
+    // Website: always use homepage
+    let homepage = enrichedData.website;
+    try {
+      if (homepage) {
+        const u = new URL(homepage);
+        homepage = u.origin + '/';
+      }
+    } catch {}
+    // Phones: only valid, deduped, 11-13 digits
+    const validPhones = (enrichedData.phones || []).filter(ph => {
+      try {
+        const pn = parsePhoneNumberFromString(ph, 'CA');
+        return pn && pn.isValid() && pn.number.length >= 11 && pn.number.length <= 13;
+      } catch { return false; }
+    });
+    // Emails: dedupe
+    const validEmails = Array.from(new Set(enrichedData.emails || []));
+    // Employees: dedupe, filter, and rank
+    const blacklist = [
+      'alen chen', 'alex chen', 'leadership team', 'contact us', 'top employees', 'per year', 'average salary', 'team', 'staff', 'management', 'needs manual identification'
+    ];
+    const empSet = new Set();
+    const filteredEmployees = (enrichedData.employees || []).filter(emp => {
+      if (!emp.name || emp.name.length < 3) return false;
+      const norm = emp.name.toLowerCase().replace(/[^a-z ]/g, '');
+      if (blacklist.includes(norm)) return false;
+      if (empSet.has(norm)) return false;
+      empSet.add(norm);
+      if (!emp.name.match(/\b[A-Z][a-z]+ [A-Z][a-z]+/)) return false;
+      if (!(emp.role || emp.email || emp.phone)) return false;
+      return true;
+    });
+    // --- Logging ---
+    console.log('[ENRICH] Filtered homepage:', homepage);
+    console.log('[ENRICH] Valid phones:', validPhones);
+    console.log('[ENRICH] Valid emails:', validEmails);
+    console.log('[ENRICH] Filtered employees:', filteredEmployees.map(e => ({ name: e.name, role: e.role })));
+    // --- Update company with all enriched fields ---
+    let newPhone = validPhones.length > 0 ? validPhones[0] : company.phone;
     let newAddress = (enrichedData.address && enrichedData.address.length > 5) ? enrichedData.address : company.address;
     const updateData = {
-      website: enrichedData.website || null,
+      website: homepage || null,
       socials: enrichedData.socials ? JSON.stringify(enrichedData.socials) : null,
       industry: enrichedData.industry || company.industry || null,
       description: enrichedData.description || company.description || null,
       status: enrichedData.status || 'incomplete',
       phone: newPhone,
       address: newAddress,
-      email: enrichedData.emails && enrichedData.emails.length > 0 ? enrichedData.emails[0] : company.email
+      email: validEmails.length > 0 ? validEmails[0] : company.email
     };
     const updatedCompany = await updateCompany(companyId, updateData);
     // Store all emails/phones as contacts (if not already present)
-    const { emails = [], phones = [], employees = [] } = enrichedData;
-    const { createContact } = await import('../models/Contact.js');
-    // Add generic company-level contacts for emails/phones
-    for (const email of emails) {
-      await createContact(companyId, company.name, 'Generic', email, null, null, null, 'enrichment');
-      console.log(`[ENRICH] Saved generic email contact: ${email}`);
+    const { createContact, getContactsByCompanyId } = await import('../models/Contact.js');
+    const existingContacts = await getContactsByCompanyId(companyId);
+    // Helper to check for duplicate contact
+    function isDuplicateContact(name, role, email, phone) {
+      return existingContacts.some(c =>
+        c.name === name && c.role === role &&
+        (email ? c.email === email : true) &&
+        (phone ? c.phone === phone : true)
+      );
     }
-    for (const phone of phones) {
-      await createContact(companyId, company.name, 'Generic', null, phone, null, null, 'enrichment');
-      console.log(`[ENRICH] Saved generic phone contact: ${phone}`);
-    }
-    // Add employees as contacts (try to parse name, role, email, phone from raw if possible)
-    for (const emp of employees) {
-      let name = emp.raw || '';
-      let role = '';
-      let email = null;
-      let phone = null;
-      // Try to split name and role if possible
-      const match = name.match(/^(.*?)(,|\-|\||\s{2,})(.*)$/);
-      if (match) {
-        name = match[1].trim();
-        role = match[3].trim();
+    for (const email of validEmails) {
+      if (!isDuplicateContact(company.name, 'Generic', email, null)) {
+        await createContact(companyId, company.name, 'Generic', email, null, null, null, 'enrichment');
+        console.log(`[ENRICH] Saved generic email contact: ${email}`);
+      } else {
+        console.log(`[ENRICH] Skipped duplicate generic email contact: ${email}`);
       }
-      // Try to extract email/phone from raw if present
-      if (emp.email) email = emp.email;
-      if (emp.phone) phone = emp.phone;
-      // Try to extract email/phone from text if present
-      if (!email && /[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/.test(emp.raw)) {
+    }
+    for (const phone of validPhones) {
+      if (!isDuplicateContact(company.name, 'Generic', null, phone)) {
+        await createContact(companyId, company.name, 'Generic', null, phone, null, null, 'enrichment');
+        console.log(`[ENRICH] Saved generic phone contact: ${phone}`);
+      } else {
+        console.log(`[ENRICH] Skipped duplicate generic phone contact: ${phone}`);
+      }
+    }
+    // Add employees as contacts (name, role, email, phone) with deduplication and log extraction attempts
+    for (const emp of filteredEmployees) {
+      let name = emp.name || '';
+      let role = emp.role || '';
+      let email = emp.email || null;
+      let phone = emp.phone || null;
+      // Try to extract email/phone from raw if not present
+      if (!email && emp.raw && /[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/.test(emp.raw)) {
         email = emp.raw.match(/[\w.-]+@[\w.-]+\.[A-Za-z]{2,}/)[0];
+        console.log(`[ENRICH] Extracted employee email from raw: ${email} (raw: ${emp.raw})`);
       }
-      if (!phone && /(\+?\d[\d()\s.-]{6,}\d)/.test(emp.raw)) {
+      if (!phone && emp.raw && /(\+?\d[\d()\s.-]{6,}\d)/.test(emp.raw)) {
         phone = emp.raw.match(/(\+?\d[\d()\s.-]{6,}\d)/)[0];
+        console.log(`[ENRICH] Extracted employee phone from raw: ${phone} (raw: ${emp.raw})`);
       }
-      await createContact(companyId, name, role, email, phone, null, null, 'enrichment');
-      console.log(`[ENRICH] Saved employee contact: name=${name}, role=${role}, email=${email}, phone=${phone}`);
+      if (!isDuplicateContact(name, role, email, phone)) {
+        await createContact(companyId, name, role, email, phone, null, null, 'enrichment');
+        console.log(`[ENRICH] Saved employee contact: name=${name}, role=${role}, email=${email}, phone=${phone}`);
+      } else {
+        console.log(`[ENRICH] Skipped duplicate employee contact: name=${name}, role=${role}, email=${email}, phone=${phone}`);
+      }
+    }
+    // Remove duplicate employee names in contacts for this company
+    const { removeDuplicateEmployeeContactsByName } = await import('../models/Contact.js');
+    const removed = await removeDuplicateEmployeeContactsByName(companyId);
+    if (removed > 0) {
+      console.log(`[ENRICH] Removed ${removed} duplicate employee contacts for companyId=${companyId}`);
     }
     // Create audit log
     await createAuditLog(
@@ -569,7 +628,7 @@ const enrichCompanyData = async (req, res) => {
       'company',
       'company',
       companyId,
-      { status: enrichedData.status, details: enrichedData }
+      { status: enrichedData.status, details: enrichedData, removedDuplicateEmployees: removed }
     );
     res.json({
       message: `Enrichment status: ${enrichedData.status}`,

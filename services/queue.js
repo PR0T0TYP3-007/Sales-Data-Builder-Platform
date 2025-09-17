@@ -136,7 +136,7 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
   const { companyId, url, userId, companyName } = job.data;
   try {
     console.log(`[QUEUE] Processing enrichment job for companyId=${companyId}, url=${url}, userId=${userId}, companyName=${companyName}`);
-    const { scrapeWebsiteData } = await import('./scraper.js');
+  // Removed scraper.js usage
     const { updateCompany } = await import('../models/Company.js');
     const { createAuditLog } = await import('../models/AuditLog.js');
     const { default: companyFinder } = await import('./companyFinder.js');
@@ -203,48 +203,18 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
       websiteToUse = await fuzzyGoogleWebsite({ name: companyName, address });
       console.log(`[QUEUE] FuzzyGoogleWebsite found for companyId=${companyId}:`, websiteToUse);
     }
-    // Step 6: Scrape website and extract data
-    let scrapedData = { url: websiteToUse, socialLinks: socials };
-    if (websiteToUse) {
-      scrapedData = await scrapeWebsiteData(websiteToUse);
-      // Step 7: NLP extraction for additional links
-      let nlpLinks = { website: null, socials: {} };
-      if (scrapedData && scrapedData.html) {
-        nlpLinks = nlpExtractLinks(scrapedData.html);
-      } else if (scrapedData && scrapedData.description) {
-        nlpLinks = nlpExtractLinks(scrapedData.description);
-      }
-      // Merge all sources: finder, registry, NLP, scraped, social, directories
-      // Priority: companyFinder > registry > NLP > scraped > public social > directories > guess/google
-      const allSocials = { ...scrapedData.socialLinks, ...nlpLinks.socials, ...socials };
-      // Deduplicate socials (prefer official/shortest links)
-      const dedupedSocials = {};
-      for (const [key, value] of Object.entries(allSocials)) {
-        if (!dedupedSocials[key] || (value && value.length < dedupedSocials[key].length)) {
-          dedupedSocials[key] = value;
-        }
-      }
-      scrapedData.socialLinks = dedupedSocials;
-      // Website: prefer companyFinder, then registry, then NLP, then scraped, then guessed
-      if (!websiteToUse && nlpLinks.website) websiteToUse = nlpLinks.website;
-      if (!websiteToUse && scrapedData.url) websiteToUse = scrapedData.url;
-      console.log(`[QUEUE] Scraped data for companyId=${companyId}:`, scrapedData);
-    } else {
-      console.log(`[QUEUE] No website found for companyId=${companyId}, skipping scrape. Returning empty socials.`);
-    }
+    // Step 6: Skipped scraping step; rely on companyFinder and other logic only
     // Update website, socials, phone, address, and enrichment status columns
     const updateFields = { status: enrichmentStatus };
     if (websiteToUse) {
       updateFields.website = websiteToUse;
     }
-    if (scrapedData.socialLinks) {
-      updateFields.socials = JSON.stringify(scrapedData.socialLinks);
+    if (finderResult && finderResult.socials) {
+      updateFields.socials = JSON.stringify(finderResult.socials);
     }
     // Recheck and update phone/address if new values found
     if (finderResult && finderResult.phones && finderResult.phones.length > 0) {
       updateFields.phone = finderResult.phones[0];
-    } else if (scrapedData.phone) {
-      updateFields.phone = scrapedData.phone;
     }
     if (finderResult && finderResult.address && finderResult.address.length > 5) {
       updateFields.address = finderResult.address;
@@ -263,26 +233,16 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
 
     // --- EMPLOYEE/CONTACT ENRICHMENT ---
     try {
-      // Dynamically import employeeFinder to avoid circular deps
-      const { findEmployees } = await import('./employeeFinder.js');
-      // Use companyName, websiteToUse, and address if available
-      const empResult = await findEmployees(companyId, companyName, websiteToUse || scrapedData.url || url, address);
-      // If advancedEmployeeFinder exists, call it as well (optional, skip if not found)
-      let advancedEmployees = [];
-      try {
-        const { advancedEmployeeFinder } = await import('./advancedEmployeeFinder.js');
-        const adv = await advancedEmployeeFinder(companyName, websiteToUse || scrapedData.url || url, address);
-        if (Array.isArray(adv)) advancedEmployees = adv;
-      } catch (e) { /* ignore if not present */ }
-      // Merge and deduplicate by name (case-insensitive)
-      const allEmployees = [...(empResult.employees || []), ...advancedEmployees];
-      const seenNames = new Set();
-      for (const emp of allEmployees) {
+      // Only use employees from the enrichment result (finderResult.employees)
+      const employees = Array.isArray(finderResult.employees) ? finderResult.employees : [];
+      // Deduplicate by (name, role, source)
+      const seen = new Set();
+      let savedCount = 0;
+      for (const emp of employees) {
         if (!emp.name || typeof emp.name !== 'string' || emp.name.trim().length < 2) continue;
-        const normName = emp.name.trim().toLowerCase();
-        if (seenNames.has(normName)) continue;
-        seenNames.add(normName);
-        // Save contact with all available info
+        const key = `${emp.name.trim().toLowerCase()}|${(emp.role||'').trim().toLowerCase()}|${(emp.source||'').trim().toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         try {
           const { createContact } = await import('../models/Contact.js');
           await createContact(
@@ -295,11 +255,12 @@ simpleQueue.process('company_enrichment', 3, async (job) => {
             emp.linkedin_url || null,
             emp.source || 'enrichment'
           );
+          savedCount++;
         } catch (contactErr) {
           console.error(`[QUEUE] Failed to save contact for companyId=${companyId}:`, emp, contactErr);
         }
       }
-      console.log(`[QUEUE] Saved ${seenNames.size} contacts for companyId=${companyId}`);
+      console.log(`[QUEUE] Saved ${savedCount} contacts for companyId=${companyId}`);
     } catch (empEnrichErr) {
       console.error(`[QUEUE] Employee enrichment failed for companyId=${companyId}:`, empEnrichErr);
     }

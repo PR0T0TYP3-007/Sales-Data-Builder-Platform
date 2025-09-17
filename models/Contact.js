@@ -1,3 +1,27 @@
+// Remove duplicate employee contacts for a company, keeping only one per (name, role, source)
+const removeDuplicateEmployeeContactsByName = async (companyId) => {
+  // Find duplicate (name, role, source) for this company
+  const findDupesQuery = `
+    SELECT name, role, source, MIN(id) as keep_id
+    FROM contacts
+    WHERE company_id = $1 AND name IS NOT NULL AND name != ''
+    GROUP BY name, role, source
+    HAVING COUNT(*) > 1
+  `;
+  const { rows: dupes } = await pool.query(findDupesQuery, [companyId]);
+  if (dupes.length === 0) return 0;
+  // For each duplicate, delete all but the one with the lowest id
+  let deleted = 0;
+  for (const dupe of dupes) {
+    const delQuery = `
+      DELETE FROM contacts
+      WHERE company_id = $1 AND name = $2 AND role = $3 AND source = $4 AND id <> $5
+    `;
+    const res = await pool.query(delQuery, [companyId, dupe.name, dupe.role, dupe.source, dupe.keep_id]);
+    deleted += res.rowCount;
+  }
+  return deleted;
+};
 import pool from '../database/db.js';
 
 // Create a new contact
@@ -41,4 +65,4 @@ const deleteContact = async (id) => {
   return result.rows[0];
 };
 
-export { createContact, getContactsByCompanyId, updateContact, deleteContact };
+export { createContact, getContactsByCompanyId, updateContact, deleteContact, removeDuplicateEmployeeContactsByName };

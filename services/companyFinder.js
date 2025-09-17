@@ -1,6 +1,8 @@
 
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import { findEmployees as findEmployeesAdvanced } from './employeeFinder.js';
 
 const HEADERS = { "User-Agent": "Mozilla/5.0" };
 
@@ -41,8 +43,14 @@ async function crawlWebsite(url) {
   const socials = { linkedin: "", facebook: "", twitter: "", instagram: "" };
   let email = null;
   let description = "";
+  let homepage = url;
   try {
     console.log(`[Crawler] Crawling website: ${url}`);
+    // Always resolve homepage
+    try {
+      const u = new URL(url);
+      homepage = u.origin + '/';
+    } catch {}
     const res = await axios.get(url, { headers: HEADERS, timeout: 10000 });
     const $ = cheerio.load(res.data);
     description =
@@ -61,10 +69,14 @@ async function crawlWebsite(url) {
     console.log(`[Crawler] Extracted description: ${description}`);
     console.log(`[Crawler] Extracted socials:`, socials);
     if (email) console.log(`[Crawler] Found email: ${email}`);
+    // Return homepage for normalization
+    return { socials, email, description, homepage };
   } catch (err) {
+    // Log and return empty but do not throw, so enrichment continues
     console.warn(`[Crawler] Crawl error:`, err.message);
+    return { socials, email, description, homepage, crawlError: err.message };
   }
-  return { socials, email, description };
+  return { socials, email, description, homepage };
 }
 
 function inferIndustry(text) {
@@ -79,58 +91,106 @@ function inferIndustry(text) {
   return industry;
 }
 
+
 const enrichCompany = async (name, address, phone) => {
   console.log(`[Enrichment] Starting enrichment for: ${name}, ${address}, ${phone}`);
   const query = `${name} ${address} ${phone}`;
   const results = await searchDuckDuckGo(query);
-  const website = results[0] || null;
-  let socials = {}, email = null, description = "", html = "";
-  let emails = [], phones = [];
-  let employees = [];
+  let website = results[0] || null;
+  let homepage = website;
+  let socials = {}, email = null, description = "";
+  let emails = [], phones = [], employees = [];
+  let linkedinEmployees = [];
   if (website) {
+    // Normalize to homepage
+    try {
+      const u = new URL(website);
+      homepage = u.origin + '/';
+      website = homepage;
+    } catch {}
     console.log(`[Enrichment] Found website: ${website}`);
     const crawlResult = await crawlWebsite(website);
     socials = crawlResult.socials;
     email = crawlResult.email;
     description = crawlResult.description;
-    html = crawlResult.html || "";
-    // Extract additional emails/phones from HTML
-    if (html) {
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-      const phoneRegex = /(\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?)?\d{3}[\s.-]?\d{4}/g;
-      emails = Array.from(new Set((html.match(emailRegex) || [])));
-      phones = Array.from(new Set((html.match(phoneRegex) || [])));
-    }
-    // Find employees by crawling about/team pages
+    homepage = crawlResult.homepage || homepage;
+    // Use advanced employee finder (website + LinkedIn)
+    let advancedEmployees = [];
     try {
-      const employeePages = ["about", "team", "leadership", "our-people", "management"];
-      for (let path of employeePages) {
-        try {
-          const res = await axios.get(`${website.replace(/\/$/, "")}/${path}`, { headers: HEADERS, timeout: 10000 });
-          const $ = cheerio.load(res.data);
-          $("p, h2, h3, li").each((_, el) => {
-            const text = $(el).text().trim();
-            if (
-              text.match(/[A-Z][a-z]+ [A-Z][a-z]+/) &&
-              (text.includes("CEO") || text.includes("Manager") || text.includes("Director") || text.includes("Officer") || text.includes("President"))
-            ) {
-              employees.push({ raw: text });
-            }
-          });
-        } catch {}
+      advancedEmployees = (await findEmployeesAdvanced(null, name, homepage)).employees || [];
+    } catch (e) {
+      console.warn('[Enrichment] Advanced employee finder failed:', e.message);
+    }
+    // LinkedIn crawl if found
+    if (socials.linkedin) {
+      try {
+        const linkedInResult = await findEmployeesAdvanced(null, name, socials.linkedin);
+        linkedinEmployees = linkedInResult.employees || [];
+      } catch (e) {
+        console.warn('[Enrichment] LinkedIn crawl failed:', e.message);
       }
-    } catch (err) {
-      console.warn('[Enrichment] Employee enrichment failed:', err.message);
+    }
+    // Merge and dedupe employees (LinkedIn > website > others)
+    const allEmployees = [...linkedinEmployees, ...advancedEmployees];
+    // Filter out global false-positives and generic names, dedupe by (name, role, source)
+    const blacklist = [
+      'alen chen', 'alex chen', 'leadership team', 'contact us', 'top employees', 'per year', 'average salary', 'team', 'staff', 'management', 'needs manual identification'
+    ];
+    const empSet = new Set();
+    employees = allEmployees.filter(emp => {
+      if (!emp.name || emp.name.length < 3) return false;
+      const norm = emp.name.toLowerCase().replace(/[^a-z ]/g, '');
+      if (blacklist.includes(norm)) return false;
+      // Dedupe by (name, role, source)
+      const key = `${emp.name.toLowerCase()}|${emp.role ? emp.role.toLowerCase() : ''}|${emp.source ? emp.source.toLowerCase() : ''}`;
+      if (empSet.has(key)) return false;
+      empSet.add(key);
+      // Must have at least two capitalized words (likely a real name)
+      if (!emp.name.match(/\b[A-Z][a-z]+ [A-Z][a-z]+/)) return false;
+      // Must have a role or email/phone
+      if (!(emp.role || emp.email || emp.phone)) return false;
+      return true;
+    });
+    // Extract additional emails/phones from website
+    try {
+      const res = await axios.get(website, { headers: HEADERS, timeout: 10000 });
+      const html = res.data;
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+      emails = Array.from(new Set((html.match(emailRegex) || [])));
+      // Phone extraction: only valid, normalized, 11-13 digits
+      const phoneRegex = /(\+?\d[\d\s().-]{9,20}\d)/g;
+      let phoneMatches = html.match(phoneRegex) || [];
+      phones = phoneMatches
+        .map(num => {
+          try {
+            const pn = parsePhoneNumberFromString(num, 'CA');
+            if (pn && pn.isValid() && pn.number.length >= 11 && pn.number.length <= 13) return pn.format('E.164');
+          } catch {}
+          return null;
+        })
+        .filter(Boolean);
+      phones = Array.from(new Set(phones));
+    } catch (e) {
+      // fallback: no extra emails/phones
     }
   } else {
     console.log(`[Enrichment] No website found for: ${name}`);
   }
-  // Always include the direct email/phone if present
+  // Always include the direct email/phone if present and valid
   if (email && !emails.includes(email)) emails.unshift(email);
-  if (phone && !phones.includes(phone)) phones.unshift(phone);
+  if (phone) {
+    try {
+      const pn = parsePhoneNumberFromString(phone, 'CA');
+      if (pn && pn.isValid() && pn.number.length >= 11 && pn.number.length <= 13 && !phones.includes(pn.format('E.164'))) {
+        phones.unshift(pn.format('E.164'));
+      }
+    } catch {}
+  }
   // Remove duplicates
   emails = Array.from(new Set(emails));
   phones = Array.from(new Set(phones));
+  // Rank: LinkedIn > website > others (already ordered)
+  // Pick best website (homepage)
   const industry = inferIndustry(description);
   // Determine enrichment status
   let status = "incomplete";
@@ -143,8 +203,8 @@ const enrichCompany = async (name, address, phone) => {
   const result = {
     companyName: name,
     address,
-    phone,
-    website,
+    phone: phones[0] || null,
+    website: homepage,
     socials,
     emails,
     phones,

@@ -3,9 +3,15 @@
 
 <% layout('layout') %>
 
+
 <div class="header">
-    <div class="page-title">Company Enrichment</div>
+        <div class="page-title">Company Enrichment</div>
 </div>
+<% if (typeof flash !== 'undefined' && flash && flash.message) { %>
+    <div class="alert alert-<%= flash.type || 'info' %>" style="max-width:600px;margin:1em auto;text-align:center;">
+        <%= flash.message %>
+    </div>
+<% } %>
 
 <form method="GET" action="/enrich" style="max-width:600px;margin:1em auto 0 auto;display:flex;gap:0.5em;justify-content:center;">
     <input type="text" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search companies by name, website, phone, address, or industry" class="form-control" style="flex:1;min-width:0;">
@@ -13,23 +19,26 @@
 </form>
 
 <!-- Pagination controls moved below table -->
+<form id="bulk-enrich-form" action="/enrich" method="POST">
 <div class="table-container" style="max-width: 1100px; margin: 0 auto 2rem auto; padding-left: 20px; padding-right: 20px;">
     <table class="table">
         <thead>
             <tr>
+                <th><input type="checkbox" id="select-all"></th>
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Address</th>
                 <th style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Website</th>
                 <th>Industry</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <!-- Actions column removed -->
             </tr>
         </thead>
         <tbody>
             <% if (companies && companies.length) { %>
                 <% companies.forEach(function(company) { %>
                     <tr>
+                        <td><input type="checkbox" name="companyIds[]" value="<%= company.id %>"></td>
                         <td><%= company.name %></td>
                         <td><%= company.phone || '' %></td>
                         <td><%= company.address || '' %></td>
@@ -52,12 +61,7 @@
                             <% } %>
                             <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
                         </td>
-                        <td>
-                            <form action="/enrich" method="POST" style="display:inline;">
-                                <input type="hidden" name="companyIds" value="<%= company.id %>">
-                                <button type="submit" class="btn btn-success btn-sm">Enrich</button>
-                            </form>
-                        </td>
+                        <!-- Actions cell removed -->
                     </tr>
                 <% }) %>
             <% } else { %>
@@ -66,6 +70,44 @@
         </tbody>
     </table>
 </div>
+<div style="text-align:center;margin-bottom:1em;display:flex;gap:1em;justify-content:center;">
+    <button type="submit" class="btn btn-success" id="bulk-enrich-btn">Enrich Selected</button>
+    <button type="button" class="btn btn-danger" id="enrich-all-btn">Enrich All</button>
+</div>
+<script>
+// Select all checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    var selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            var checkboxes = document.querySelectorAll('input[name="companyIds[]"]');
+            for (var cb of checkboxes) { cb.checked = selectAll.checked; }
+        });
+    }
+    // Enrich All button logic
+    var enrichAllBtn = document.getElementById('enrich-all-btn');
+    if (enrichAllBtn) {
+        enrichAllBtn.addEventListener('click', function() {
+            var checkboxes = document.querySelectorAll('input[name="companyIds[]"]');
+            for (var cb of checkboxes) { cb.checked = true; }
+            document.getElementById('bulk-enrich-form').submit();
+        });
+    }
+});
+</script>
+</form>
+<script>
+// Select all checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    var selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            var checkboxes = document.querySelectorAll('input[name="companyIds[]"]');
+            for (var cb of checkboxes) { cb.checked = selectAll.checked; }
+        });
+    }
+});
+</script>
 
 <div style="display:flex;flex-direction:column;align-items:center;margin-top:1em;">
     <div style="margin-bottom:0.5em;">
