@@ -1,3 +1,28 @@
+// Delete a group
+import { deleteGroup } from '../models/Group.js';
+import db from '../database/db.js';
+
+const deleteGroupController = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    await deleteGroup(groupId);
+    // Optionally, create audit log
+    if (req.session && req.session.user) {
+      await createAuditLog(
+        req.session.user.id,
+        'delete_group',
+        'group',
+        groupId,
+        { status: 'deleted' }
+      );
+    }
+    res.redirect('/groups');
+  } catch (error) {
+    console.error('Error deleting group:', error);
+    res.status(500).send('Failed to delete group');
+  }
+};
+
 import { createGroup, addCompaniesToGroup, getCompaniesInGroup, getAllGroups } from '../models/Group.js';
 import { getWorkflowById } from '../models/Workflow.js';
 import { taskGenerationQueue } from '../services/queue.js';
@@ -108,18 +133,20 @@ const runWorkflowOnGroup = async (req, res) => {
 
 // Get all groups
 const getGroups = async (req, res) => {
+  console.log('DEBUG getGroups: req.session:', req.session);
+  if (!req.session || !req.session.user) {
+    console.log('DEBUG getGroups: Access denied, session or user missing');
+    return res.status(403).render('error', { title: 'Error', error: 'Access denied.', user: null });
+  }
   try {
     const groups = await getAllGroups();
-    res.json({
-      success: true,
-      data: groups
-    });
+    // Fetch all companies and workflows for admin/manager actions
+    const { rows: allCompanies } = await db.query('SELECT * FROM companies WHERE product_id = 1');
+    const { rows: workflows } = await db.query('SELECT * FROM workflows WHERE product_id = 1');
+    res.render('groups', { title: 'Groups', groups, allCompanies, workflows, user: req.session.user });
   } catch (error) {
     console.error('Error fetching groups:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error.'
-    });
+    res.status(500).render('error', { title: 'Error', error: 'Internal server error.', user: req.session && req.session.user ? req.session.user : null });
   }
 };
 
@@ -279,4 +306,4 @@ const bulkCreateGroups = async (req, res) => {
   }
 };
 
-export {createNewGroup, addCompaniesToGroupController, runWorkflowOnGroup, getGroups, bulkAddCompaniesToGroup, bulkAssignWorkflow, bulkCreateGroups };
+export {createNewGroup, addCompaniesToGroupController, runWorkflowOnGroup, getGroups, bulkAddCompaniesToGroup, bulkAssignWorkflow, bulkCreateGroups, deleteGroupController};

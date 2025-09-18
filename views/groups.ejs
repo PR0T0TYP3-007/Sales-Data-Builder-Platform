@@ -1,11 +1,19 @@
+<% if (user && user.role === 'team_member') { %>
+<style>
+    .btn, form, .header-actions, select[name="company_ids"], select[name="workflow_id"] {
+        display: none !important;
+    }
+    /* Do NOT hide sidebar */
+</style>
+<% } %>
 <% layout('layout') %>
 <div class="header">
     <div class="page-title">Groups</div>
-    <% if (user && user.role !== 'team-member') { %>
-    <div class="header-actions">
-        <a href="/groups/new" class="btn btn-primary"><i class="fas fa-plus btn-icon"></i>New Group</a>
-    </div>
-    <% } %>
+    <% if (!(user && user.role === 'team_member')) { %>
+        <div class="header-actions">
+            <a href="/groups/new" class="btn btn-primary"><i class="fas fa-plus btn-icon"></i>New Group</a>
+        </div>
+        <% } %>
 </div>
 <div class="groups-grid">
         <% groups.forEach(function(group) { %>
@@ -44,14 +52,14 @@
                                                     <span style="color:#aaa;">N/A</span>
                                                 <% } %>
                                             </td>
-                                            <% if (user && user.role !== 'team-member') { %>
                                             <td>
+                                                <% if (!(user && user.role === 'team_member')) { %>
                                                 <form action="/groups/<%= group.id %>/remove-company" method="POST" style="display:inline;">
                                                     <input type="hidden" name="company_id" value="<%= company.id %>" />
                                                     <button type="submit" class="btn btn-sm btn-danger">Remove</button>
                                                 </form>
+                                                <% } %>
                                             </td>
-                                            <% } %>
                                         </tr>
                                     <% }) %>
                                 </tbody>
@@ -60,7 +68,7 @@
                             <span style="color:#aaa;">No companies in this group.</span>
                         <% } %>
                     </div>
-                    <% if (user && user.role !== 'team-member') { %>
+                    <% if (!(user && user.role === 'team_member')) { %>
                     <form action="/groups/<%= group.id %>/add-companies" method="POST" style="margin-bottom:1.2rem;display:flex;gap:0.5rem;align-items:center;">
                         <select name="company_ids" class="form-control" multiple required style="min-width:180px;max-height:120px;overflow-y:auto;">
                             <% allCompanies.forEach(function(company) { %>

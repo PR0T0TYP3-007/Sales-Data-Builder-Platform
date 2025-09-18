@@ -1,4 +1,5 @@
-<%- include('layout', { title: title || 'Error' }) %>
+<% var safeTitle = typeof title !== 'undefined' ? title : 'Error'; %>
+<% layout('layout', { title: safeTitle, user: typeof user !== 'undefined' ? user : null }) %>
 
 <div class="container" style="margin-top: 3rem;">
   <div class="card" style="max-width: 600px; margin: 0 auto;">
@@ -6,12 +7,13 @@
       <h2>Error</h2>
     </div>
     <div class="card-body">
-      <p><%= message || 'An unexpected error occurred.' %></p>
-      <% if (error && error.status) { %>
-        <p>Status: <%= error.status %></p>
+  <% var safeError = typeof error !== 'undefined' ? error : null; %>
+  <p><%= safeError || 'An unexpected error occurred.' %></p>
+      <% if (safeError && safeError.status) { %>
+        <p>Status: <%= safeError.status %></p>
       <% } %>
-      <% if (error && error.stack) { %>
-        <pre style="color: #c00; background: #f8d7da; padding: 1rem; border-radius: 0.5rem;"><%= error.stack %></pre>
+      <% if (safeError && safeError.stack) { %>
+        <pre style="color: #c00; background: #f8d7da; padding: 1rem; border-radius: 0.5rem;"><%= safeError.stack %></pre>
       <% } %>
     </div>
   </div>

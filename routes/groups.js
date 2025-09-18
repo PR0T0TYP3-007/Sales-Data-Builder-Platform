@@ -5,15 +5,21 @@ import {
   runWorkflowOnGroup,
   getGroups,
   bulkAssignWorkflow,
-  bulkCreateGroups
+  bulkCreateGroups,
+  deleteGroupController
 } from '../controller/groupController.js';
+
 import { generateTasksForGroup } from '../models/Task.js';
 import db from '../database/db.js';
 
 const router = express.Router();
 
-// GET /api/groups - Get all groups
+// GET /groups - Render groups page
+// GET /groups - Return JSON using controller
 router.get('/', getGroups);
+
+// POST /groups/:groupId/delete - Delete a group
+router.post('/:groupId/delete', deleteGroupController);
 
 // POST /api/groups - Create a new group
 router.post('/', createNewGroup);
@@ -26,19 +32,17 @@ router.post('/:groupId/run-workflow/:workflowId', runWorkflowOnGroup);
 
 // POST /api/groups/:groupId/assign-workflow - Assign a workflow to a group and generate tasks
 router.post('/:groupId/assign-workflow', async (req, res) => {
-  const { workflowId } = req.body;
+  const { workflow_id } = req.body;
   const { groupId } = req.params;
-
-  // Optionally, store the assignment in a join table if needed
+  if (!workflow_id) {
+    return res.status(400).render('error', { title: 'Error', error: 'Workflow ID is required.' });
+  }
   await db.query(
     'INSERT INTO group_workflows (group_id, workflow_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-    [groupId, workflowId]
+    [groupId, workflow_id]
   );
-
-  // Generate tasks for all companies in the group
-  await generateTasksForGroup(workflowId, groupId);
-
-  res.redirect(`/groups/${groupId}`);
+  await generateTasksForGroup(workflow_id, groupId);
+  res.redirect('/dashboard');
 });
 
 router.post('/bulk-assign-workflow', bulkAssignWorkflow);

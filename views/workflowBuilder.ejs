@@ -1,3 +1,4 @@
+
 <% layout('layout') %>
 <div class="header">
     <div class="page-title"><%= workflow ? 'Edit Workflow' : 'Create Workflow' %></div>
@@ -13,39 +14,33 @@
     <div id="steps-container">
         <% let steps = workflow ? workflow.steps : []; %>
         <% steps.forEach(function(step, idx) { %>
-            <div class="workflow-step">
-                <div class="step-number"><%= idx+1 %></div>
-                <div class="form-group">
-                    <label class="form-label">Step Type</label>
-                    <select class="form-control step-type">
-                        <option value="email" <%= step.type === 'email' ? 'selected' : '' %>>Email</option>
-                        <option value="phone" <%= step.type === 'phone' ? 'selected' : '' %>>Phone Call</option>
-                        <option value="linkedin" <%= step.type === 'linkedin' ? 'selected' : '' %>>LinkedIn Message</option>
-                        <option value="event" <%= step.type === 'event' ? 'selected' : '' %>>Event Invite</option>
-                        <option value="package" <%= step.type === 'package' ? 'selected' : '' %>>Send Package</option>
-                    </select>
+            <div class="workflow-step card" style="margin-bottom:0.3rem; padding:0.3rem;">
+                <div class="step-number" style="font-weight:bold; margin-bottom:0.2rem;">Step <%= idx+1 %></div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div class="form-group" style="flex:1; margin-bottom:0;">
+                        <label class="form-label">Step Type</label>
+                        <select class="form-control step-type">
+                            <option value="email" <%= step.type === 'email' ? 'selected' : '' %>>Email</option>
+                            <option value="phone" <%= step.type === 'phone' ? 'selected' : '' %>>Phone Call</option>
+                            <option value="linkedin" <%= step.type === 'linkedin' ? 'selected' : '' %>>LinkedIn Message</option>
+                            <option value="event" <%= step.type === 'event' ? 'selected' : '' %>>Event Invite</option>
+                            <option value="package" <%= step.type === 'package' ? 'selected' : '' %>>Send Package</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="width:120px; margin-bottom:0;">
+                        <label class="form-label">Delay (days)</label>
+                        <input type="number" class="form-control step-delay" value="<%= step.delay_days %>" min="0">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Delay (days)</label>
-                    <input type="number" class="form-control step-delay" value="<%= step.delay_days %>" min="0">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Role</label>
-                    <select class="form-control step-role">
-                        <option value="admin" <%= step.role === 'admin' ? 'selected' : '' %>>Admin</option>
-                        <option value="manager" <%= step.role === 'manager' ? 'selected' : '' %>>Manager</option>
-                        <option value="team-member" <%= step.role === 'team-member' ? 'selected' : '' %>>Team Member</option>
-                    </select>
-                </div>
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Template</label>
-                    <textarea class="form-control step-template"><%= step.template %></textarea>
+                    <textarea class="form-control step-template" rows="1"><%= step.template %></textarea>
                 </div>
             </div>
         <% }) %>
     </div>
     <input type="hidden" name="steps" id="steps-json">
-    <button type="button" class="btn btn-secondary" id="add-step-btn">Add Step</button>
+    <button type="button" class="btn btn-secondary" id="add-step-btn" style="margin-bottom:1rem;">Add Step</button>
     <button type="submit" class="btn btn-primary">Save Workflow</button>
 </form>
 <script>
@@ -54,8 +49,7 @@
         document.querySelectorAll('#steps-container .workflow-step').forEach(function(stepDiv) {
             steps.push({
                 type: stepDiv.querySelector('.step-type').value,
-                delay_days: stepDiv.querySelector('.step-delay').value,
-                role: stepDiv.querySelector('.step-role').value,
+                delay_days: parseInt(stepDiv.querySelector('.step-delay').value, 10),
                 template: stepDiv.querySelector('.step-template').value
             });
         });
@@ -65,34 +59,30 @@
         var stepsContainer = document.getElementById('steps-container');
         var idx = stepsContainer.children.length;
         var stepDiv = document.createElement('div');
-        stepDiv.className = 'workflow-step';
+        stepDiv.className = 'workflow-step card';
+        stepDiv.style.marginBottom = '0.3rem';
+        stepDiv.style.padding = '0.3rem';
         stepDiv.innerHTML = `
-            <div class="step-number">${idx+1}</div>
-            <div class="form-group">
-                <label class="form-label">Step Type</label>
-                <select class="form-control step-type">
-                    <option value="email">Email</option>
-                    <option value="phone">Phone Call</option>
-                    <option value="linkedin">LinkedIn Message</option>
-                    <option value="event">Event Invite</option>
-                    <option value="package">Send Package</option>
-                </select>
+            <div class="step-number" style="font-weight:bold; margin-bottom:0.2rem;">Step ${idx+1}</div>
+            <div style='display:flex; gap:10px; align-items:center;'>
+                <div class="form-group" style="flex:1; margin-bottom:0;">
+                    <label class="form-label">Step Type</label>
+                    <select class="form-control step-type">
+                        <option value="email">Email</option>
+                        <option value="phone">Phone Call</option>
+                        <option value="linkedin">LinkedIn Message</option>
+                        <option value="event">Event Invite</option>
+                        <option value="package">Send Package</option>
+                    </select>
+                </div>
+                <div class="form-group" style="width:120px; margin-bottom:0;">
+                    <label class="form-label">Delay (days)</label>
+                    <input type="number" class="form-control step-delay" value="0" min="0">
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Delay (days)</label>
-                <input type="number" class="form-control step-delay" value="0" min="0">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Role</label>
-                <select class="form-control step-role">
-                    <option value="admin">Admin</option>
-                    <option value="manager">Manager</option>
-                    <option value="team-member">Team Member</option>
-                </select>
-            </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom:0;">
                 <label class="form-label">Template</label>
-                <textarea class="form-control step-template"></textarea>
+                <textarea class="form-control step-template" rows="1"></textarea>
             </div>
         `;
         stepsContainer.appendChild(stepDiv);

@@ -18,7 +18,15 @@ const getWorkflowById = async (id) => {
   const result = await pool.query('SELECT * FROM workflows WHERE id = $1', [id]);
   const workflow = result.rows[0];
   if (workflow) {
-    workflow.steps = workflow.steps ? JSON.parse(workflow.steps) : [];
+    if (workflow.steps && typeof workflow.steps === 'string' && workflow.steps.trim() !== '') {
+      try {
+        workflow.steps = JSON.parse(workflow.steps);
+      } catch (e) {
+        workflow.steps = [];
+      }
+    } else {
+      workflow.steps = [];
+    }
   }
   return workflow;
 };
@@ -76,4 +84,14 @@ const getWorkflowsByCompanyId = async (companyId) => {
   return result.rows;
 };
 
-export { createWorkflow, getWorkflowById, updateWorkflow, getAllWorkflows, createWorkflowWithSteps, getWorkflowsByCompanyId };
+// Delete a workflow by ID
+const deleteWorkflow = async (workflowId) => {
+  // Remove company-workflow assignments (optional)
+  await pool.query('DELETE FROM company_workflows WHERE workflow_id = $1', [workflowId]);
+  // Remove group-workflow assignments (optional)
+  await pool.query('DELETE FROM group_workflows WHERE workflow_id = $1', [workflowId]);
+  // Delete the workflow itself
+  await pool.query('DELETE FROM workflows WHERE id = $1', [workflowId]);
+};
+
+export { createWorkflow, getWorkflowById, updateWorkflow, getAllWorkflows, createWorkflowWithSteps, getWorkflowsByCompanyId, deleteWorkflow };

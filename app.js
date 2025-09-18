@@ -1,3 +1,5 @@
+import tasksRoutes from './routes/tasks.js';
+
 import db from './database/db.js';
 import express from 'express';
 import session from 'express-session';
@@ -28,6 +30,8 @@ import analyticsRoutes from './routes/analytics.js';
 import { apiRateLimiter, scrapingRateLimiter, checkRobotsTxt } from './middleware/rateLimit.js';
 import errorHandler from './middleware/errorHandler.js';
 import companiesRoutes from './routes/companies.js';
+import groupsRoutes from './routes/groups.js';
+import workflowRoutes from './routes/workflow.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,15 +40,6 @@ const PORT = process.env.PORT || 3000;
 app.engine('ejs', ejsMate);
 app.set('view engine', 'ejs');
 app.set('views', './views');
-
-// Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
-app.use(express.static('public')); 
-app.use(checkRobotsTxt);
-app.use('/api/', apiRateLimiter);
-app.use('/api/scrape/', scrapingRateLimiter);
-app.use('/api/companies', companiesRoutes);
 
 // Session configuration
 app.use(session({
@@ -56,6 +51,23 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
+
+
+// Middleware
+// Global request logger
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static('public')); 
+app.use(checkRobotsTxt);
+app.use('/api/', apiRateLimiter);
+app.use('/api/scrape/', scrapingRateLimiter);
+app.use('/api/companies', companiesRoutes);
+
+app.use('/groups', groupsRoutes);
+app.use('/workflows', workflowRoutes);
+app.use('/tasks', tasksRoutes);
+
 
 // Root route: redirect to dashboard or login (must be after session middleware)
 app.get('/', (req, res) => {
@@ -100,21 +112,21 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   try {
     if (req.session.user && req.session.user.role === 'team_member') {
       // Special dashboard for team members
-      const allTasks = await getAllTasks();
-      const userId = req.session.user.id;
       // Only show tasks assigned to this user
+      const userId = req.session.user.id;
+      const allTasks = await getAllTasks();
       const tasks = allTasks.filter(t => t.assigned_to == userId);
       const stats = {
         totalTasks: tasks.length,
         completedTasks: tasks.filter(t => t.status === 'completed').length,
         pendingTasks: tasks.filter(t => t.status === 'pending').length,
-        dueTasks: tasks.filter(t => t.status === 'pending' && new Date(t.due_date) <= new Date()).length
+        dueTasks: tasks.filter(t => t.status === 'pending' && t.due_date && new Date(t.due_date) <= new Date()).length
       };
       // Recently worked on tasks (last 5 updated)
       const recentTasks = tasks
         .sort((a, b) => new Date(b.updated_at || b.due_date) - new Date(a.updated_at || a.due_date))
         .slice(0, 5);
-      res.render('dashboard_team', { title: 'My Dashboard', stats, recentTasks, user: req.session.user });
+  res.render('dashboard_team', { title: 'My Dashboard', stats, recentTasks });
       return;
     }
     // Default dashboard for admin/manager
@@ -145,9 +157,9 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   }).length;
   const percentEnriched = companies.length > 0 ? Math.round((enrichedCount / companies.length) * 100) : 0;
   stats.percentEnriched = percentEnriched;
-  res.render('dashboard', { title: 'Dashboard', stats, activity: limitedActivity, user: req.session.user, enrichedCompanies });
+  res.render('dashboard', { title: 'Dashboard', stats, activity: limitedActivity, enrichedCompanies });
   } catch (err) {
-    res.render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: err.message });
+  res.render('dashboard', { title: 'Dashboard', stats: {}, activity: [], error: err.message });
   }
 });
 
@@ -168,13 +180,12 @@ app.get('/companies', requireAuth, async (req, res, next) => {
     res.render('companies', {
       title: 'Companies',
       companies,
-      user: req.session.user,
       page,
       totalPages,
       search
     });
   } catch (err) {
-    res.render('companies', { title: 'Companies', companies: [], user: req.session.user, error: err.message, page: 1, totalPages: 1, search });
+  res.render('companies', { title: 'Companies', companies: [], error: err.message, page: 1, totalPages: 1, search });
   }
 });
 
@@ -187,9 +198,21 @@ app.get('/companies/:id', requireAuth, async (req, res) => {
     const workflows = await getWorkflowsByCompanyId(req.params.id);
     const tasks = await getTasksByCompany(req.params.id);
     const groups = await getGroupsByCompanyId(req.params.id);
-    res.render('companyProfile', { title: 'Company Profile', company, contacts, workflows, tasks, groups, user: req.session.user });
+  res.render('companyProfile', { title: 'Company Profile', company, contacts, workflows, tasks, groups });
   } catch (err) {
-    res.render('companyProfile', { title: 'Company Profile', company: {}, contacts: [], workflows: [], tasks: [], groups: [], user: req.session.user, error: err.message });
+  res.render('companyProfile', { title: 'Company Profile', company: {}, contacts: [], workflows: [], tasks: [], groups: [], error: err.message });
+  }
+});
+
+// Remove company from group
+app.post('/groups/:groupId/remove-company', requireAuth, async (req, res) => {
+  const { groupId } = req.params;
+  const { company_id } = req.body;
+  try {
+    await db.query('DELETE FROM company_groups WHERE group_id = $1 AND company_id = $2', [groupId, company_id]);
+    res.redirect('/groups');
+  } catch (err) {
+    res.status(500).render('error', { title: 'Error', error: err.message });
   }
 });
 
@@ -207,8 +230,8 @@ app.get('/groups', requireAuth, async (req, res) => {
 
 // Assign companies to group
 app.post('/groups/:groupId/add-companies', requireAuth, async (req, res) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   const { groupId } = req.params;
   let companyIds = req.body.company_ids;
@@ -228,8 +251,8 @@ app.post('/groups/:groupId/add-companies', requireAuth, async (req, res) => {
 });
 // Groups (admin/manager only)
 app.get('/groups', requireAuth, (req, res, next) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   next();
 }, async (req, res) => {
@@ -244,16 +267,16 @@ app.get('/groups', requireAuth, (req, res, next) => {
 
 // New group page (GET)
 app.get('/groups/new', requireAuth, (req, res, next) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   res.render('group_new', { title: 'New Group', user: req.session.user });
 });
 
 // New group (POST)
 app.post('/groups/new', requireAuth, async (req, res) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   const { name, description } = req.body;
   try {
@@ -274,8 +297,8 @@ app.get('/workflows', requireAuth, async (req, res) => {
 });
 // Workflows (admin/manager only)
 app.get('/workflows', requireAuth, (req, res, next) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   next();
 }, async (req, res) => {
@@ -289,8 +312,8 @@ app.get('/workflows', requireAuth, (req, res, next) => {
 
 import { generateTasksForGroup } from './models/Task.js';
 app.post('/groups/:groupId/assign-workflow', requireAuth, async (req, res) => {
-  if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'manager')) {
-    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: req.session.user, error: 'Access denied.' });
+  if (!req.session.user) {
+    return res.status(403).render('dashboard', { title: 'Dashboard', stats: {}, activity: [], user: null, error: 'Access denied.' });
   }
   const { workflow_id } = req.body;
   const { groupId } = req.params;
@@ -424,10 +447,28 @@ app.post('/enrich', requireAuth, async (req, res, next) => {
   }
 });
 
-app.get('/audit-logs', requireAuth, requireRole('manager'), async (req, res) => {
+app.get('/audit-logs', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const logs = await getAuditLogs();
-    res.render('audit', { title: 'Audit Logs', logs, user: req.session.user });
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = 20;
+    const offset = (page - 1) * pageSize;
+
+    // Get total count for pagination
+    const allLogs = await getAuditLogs();
+    const totalLogs = allLogs.length;
+    const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
+
+    // Get paginated logs efficiently
+    const logs = await getAuditLogs({ limit: pageSize, offset });
+
+    res.render('audit', {
+      title: 'Audit Logs',
+      logs,
+      user: req.session.user,
+      page,
+      totalPages,
+      totalLogs
+    });
   } catch (err) {
     res.render('audit', { title: 'Audit Logs', logs: [], user: req.session.user, error: err.message });
   }
@@ -445,7 +486,8 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server started on http://localhost:${PORT}`);
 });
+
 
 

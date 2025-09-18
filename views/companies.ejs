@@ -53,7 +53,7 @@
                             <% } else if (company.email || company.description || company.industry) { %>
                                 <% displayStatus = 'Partially Enriched'; %>
                             <% } %>
-                            <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
+                                    <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
                         </td>
                         <% if (user && user.role !== 'team-member') { %>
                         <td>

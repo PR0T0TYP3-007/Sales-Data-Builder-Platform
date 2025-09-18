@@ -1,7 +1,7 @@
 <% layout('layout') %>
 <div class="header">
     <div class="page-title">Workflows</div>
-    <% if (user && user.role !== 'team-member') { %>
+    <% if (user && user.role !== 'team_member') { %>
     <div class="header-actions">
         <a href="/workflows/new" class="btn btn-primary"><i class="fas fa-plus btn-icon"></i>New Workflow</a>
     </div>
@@ -20,12 +20,19 @@
                         </li>
                     <% }) %>
                 </ol>
-                                <% if (user && user.role !== 'team-member') { %>
+                                <% if (user && user.role !== 'team_member') { %>
                                 <a href="/workflows/<%= wf.id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
                                 <form action="/workflows/<%= wf.id %>/delete" method="POST" style="display:inline;margin-left:0.5em;">
                                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this workflow?');">Delete</button>
                                 </form>
                                 <% } %>
+<% if (user && user.role === 'team_member') { %>
+<style>
+    .btn, form[action*="delete"], a[href*="edit"], .header-actions {
+        display: none !important;
+    }
+</style>
+<% } %>
             </div>
         </div>
     <% }) %>

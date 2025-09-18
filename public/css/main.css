@@ -1,3 +1,14 @@
+/* Equal column widths for audit logs table */
+.audit-logs-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.audit-logs-table th, .audit-logs-table td {
+    width: 16.66%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 /* --- Custom input and button styles for professional look --- */
 .form-label {
     display: block;

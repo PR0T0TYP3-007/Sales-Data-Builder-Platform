@@ -1,3 +1,20 @@
+import { deleteWorkflow } from '../models/Workflow.js';
+
+// Delete a workflow
+const deleteWorkflowController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteWorkflow(id);
+    // Optionally, create audit log
+    if (req.session && req.session.user) {
+      // You can add audit log logic here if needed
+    }
+    res.redirect('/workflows');
+  } catch (error) {
+    console.error('Error deleting workflow:', error);
+    res.status(500).send('Failed to delete workflow');
+  }
+};
 // controllers/workflowController.js
 import { createWorkflow, getWorkflowById } from '../models/Workflow.js';
 
@@ -70,4 +87,4 @@ const createNewWorkflow = async (req, res) => {
   }
 };
 
-export { createNewWorkflow };
+export { createNewWorkflow, deleteWorkflowController };

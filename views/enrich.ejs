@@ -59,7 +59,8 @@
                             <% } else if (company.email || company.description || company.industry) { %>
                                 <% displayStatus = 'Partially Enriched'; %>
                             <% } %>
-                            <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
+                                <td class="company-status <%= company.status %>"><%= company.status %></td>
+                                <span class="status-badge status-<%= company.status %>"><%= displayStatus %></span>
                         </td>
                         <!-- Actions cell removed -->
                     </tr>

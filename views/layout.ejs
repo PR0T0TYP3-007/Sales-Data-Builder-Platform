@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= title || 'Sales Data Builder' %></title>
+  <% var safeTitle = typeof title !== 'undefined' ? title : 'Sales Data Builder'; %>
+  <title><%= safeTitle %></title>
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -52,7 +53,7 @@
     <% } %>
 </head>
 <body class="role-<%= user && user.role ? user.role : '' %>">
-    <% if (user) { %>
+  <% if (user) { %>
       <%- include('partials/sidebar') %>
     <% } %>
   <div class="main-content">

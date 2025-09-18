@@ -70,4 +70,14 @@ const getAllGroups = async () => {
   return groups;
 };
 
-export { createGroup, addCompaniesToGroup, getCompaniesInGroup, getAllGroups };
+// Delete a group by ID
+const deleteGroup = async (groupId) => {
+  // Remove companies from group (optional, if you want to clean up join table)
+  await pool.query('DELETE FROM company_groups WHERE group_id = $1', [groupId]);
+  // Remove group-workflow assignments (optional)
+  await pool.query('DELETE FROM group_workflows WHERE group_id = $1', [groupId]);
+  // Delete the group itself
+  await pool.query('DELETE FROM groups WHERE id = $1', [groupId]);
+};
+
+export { createGroup, addCompaniesToGroup, getCompaniesInGroup, getAllGroups, deleteGroup };
