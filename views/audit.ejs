@@ -5,30 +5,48 @@
 <div class="card">
     <div class="card-header">Recent Actions</div>
     <div class="card-body">
-        <table class="table audit-logs-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Entity Type</th>
-                    <th>Details</th>
-                    <th>Timestamp</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% logs.forEach(function(log) { %>
-                    <tr style="height: 2.2em;">
-                        <td><%= log.id %></td>
-                        <td><%= log.actor_email || log.actor_id %></td>
-                        <td><%= log.action %></td>
-                        <td><%= log.entity_type %></td>
-                        <td><%= log.details ? JSON.stringify(log.details) : '' %></td>
-                        <td><%= log.created_at || log.timestamp %></td>
-                    </tr>
-                <% }) %>
-            </tbody>
-        </table>
+                <div class="table-container" style="max-width:100vw;overflow-x:auto;">
+                    <table class="table audit-logs-table" style="min-width:600px;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Actor</th>
+                                <th>Action</th>
+                                <th>Entity Type</th>
+                                <th>Details</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% logs.forEach(function(log) { %>
+                                <tr style="height:2.2em;">
+                                    <td style="word-break:break-word;max-width:80px;"><%= log.id %></td>
+                                    <td style="word-break:break-word;max-width:120px;"><%= log.actor_email || log.actor_id %></td>
+                                    <td style="word-break:break-word;max-width:120px;"><%= log.action %></td>
+                                    <td style="word-break:break-word;max-width:120px;"><%= log.entity_type %></td>
+                                    <td style="word-break:break-word;max-width:180px;"><%= log.details ? JSON.stringify(log.details) : '' %></td>
+                                    <td style="word-break:break-word;max-width:120px;"><%= log.created_at || log.timestamp %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+<style>
+@media (max-width: 768px) {
+    .table-container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .table {
+        font-size: 0.95em;
+    }
+    .pagination {
+        font-size: 1em;
+        gap: 0.5em;
+        flex-direction: column;
+    }
+}
+</style>
         <div class="pagination" style="margin-top:1em; text-align:center;">
             <% if (page > 1) { %>
                 <a href="?page=<%= page - 1 %>" class="btn btn-secondary">Previous</a>

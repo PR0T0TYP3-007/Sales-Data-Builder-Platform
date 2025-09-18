@@ -6,15 +6,30 @@
     <div class="card-header">Account Settings</div>
     <div class="card-body">
         <form action="/settings" method="POST">
-            <div class="form-group">
-                <label class="form-label">Name</label>
-                <input type="text" name="name" class="form-control" value="<%= user.name %>" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control" value="<%= user.email %>" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+                <div class="form-group" style="width:100%;">
+                    <label for="email">Email</label>
+                    <input type="email" name="email" id="email" class="form-control" value="<%= user.email %>" required style="width:100%;">
+                </div>
+                <div class="form-group" style="width:100%;">
+                    <label for="password">New Password</label>
+                    <input type="password" name="password" id="password" class="form-control" style="width:100%;">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;max-width:320px;align-self:center;">Save Changes</button>
         </form>
     </div>
+<style>
+@media (max-width: 600px) {
+    form[action="/settings"] {
+        padding: 0.5em !important;
+        gap: 0.7em !important;
+    }
+    .form-group label, .form-group input {
+        font-size: 1em !important;
+    }
+    .btn-primary {
+        font-size: 1em !important;
+        padding: 0.7em 1em !important;
+    }
+}
+</style>
 </div>

@@ -7,15 +7,13 @@
     <div class="card-header">Tasks</div>
     <div class="card-body">
     <% if (typeof groupedTasks !== 'undefined' && Object.keys(groupedTasks).length) { %>
-            <div class="company-task-cards">
+            <div class="company-task-cards" style="display:flex;flex-wrap:wrap;gap:1.2em;justify-content:center;">
             <% Object.keys(groupedTasks).forEach(function(companyId) { %>
-                <div class="card company-task-card">
-                    <div class="card-header" style="font-weight:bold;font-size:1.1em;">
-                        <%= groupedTasks[companyId].company_name %>
-                    </div>
-                    <div class="card-body">
+                <div class="card company-task-card" style="flex:1 1 320px;max-width:480px;min-width:220px;margin-bottom:1.2em;">
+                    <div class="card-header" style="font-weight:bold;font-size:1.1em;"> <%= groupedTasks[companyId].company_name %> </div>
+                    <div class="card-body" style="background:#fff;padding:1.2em;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                         <% groupedTasks[companyId].tasks.forEach(function(task) { %>
-                            <div class="task-row">
+                            <div class="task-row" style="display:flex;flex-wrap:wrap;gap:0.7em;margin-bottom:0.7em;align-items:center;">
                                 <span><strong>Task:</strong> <%= task.type %>
                                         <% if (task.type === 'email' && !(task.contact_email || task.company_email)) { %>
                                             (Find Email Manually)
@@ -54,6 +52,28 @@
                 </div>
             <% }) %>
             </div>
+<style>
+@media (max-width: 768px) {
+    .company-task-cards {
+        flex-direction: column;
+        gap: 1em;
+    }
+    .company-task-card {
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .card-header, .card-body {
+        padding: 1em !important;
+    }
+    .task-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5em;
+    }
+}
+</style>
         <% } else { %>
             <div>No tasks found.</div>
         <% } %>

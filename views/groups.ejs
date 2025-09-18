@@ -15,19 +15,20 @@
         </div>
         <% } %>
 </div>
-<div class="groups-grid">
-        <% groups.forEach(function(group) { %>
-            <div class="group-block" style="width:100%;margin-bottom:2.5rem;">
-                <div class="group-header" style="display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;padding:1rem 1.5rem;border-radius:8px 8px 0 0;">
-                    <span style="font-size:1.3rem;font-weight:700;"><%= group.name %></span>
-                    <span class="badge" style="background:#e9ecef;color:#333;padding:0.3em 0.8em;border-radius:1em;font-size:0.9em;">ID: <%= group.id %></span>
-                </div>
-                <div class="group-body" style="background:#fff;padding:1.5rem;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                    <div style="margin-bottom:1rem;"><strong>Description:</strong> <%= group.description || 'No description' %></div>
-                    <div style="margin-bottom:1rem;">
-                        <strong>Companies in Group:</strong>
-                        <% if (group.companies && group.companies.length) { %>
-                            <table class="table" style="width:100%;margin-bottom:1rem;">
+<div class="groups-grid" style="max-width:100vw;">
+    <% groups.forEach(function(group) { %>
+        <div class="group-block" style="width:100%;margin-bottom:2.5rem;">
+            <div class="group-header" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;background:#f8f9fa;padding:1rem 1.5rem;border-radius:8px 8px 0 0;">
+                <span style="font-size:1.3rem;font-weight:700;"><%= group.name %></span>
+                <span class="badge" style="background:#e9ecef;color:#333;padding:0.3em 0.8em;border-radius:1em;font-size:0.9em;">ID: <%= group.id %></span>
+            </div>
+            <div class="group-body" style="background:#fff;padding:1.5rem;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                <div style="margin-bottom:1rem;"><strong>Description:</strong> <%= group.description || 'No description' %></div>
+                <div style="margin-bottom:1rem;">
+                    <strong>Companies in Group:</strong>
+                    <% if (group.companies && group.companies.length) { %>
+                        <div class="table-container" style="overflow-x:auto;">
+                            <table class="table" style="min-width:600px;margin-bottom:1rem;">
                                 <thead>
                                     <tr>
                                         <th style="width:28%;">Name</th>
@@ -40,12 +41,12 @@
                                 <tbody>
                                     <% group.companies.forEach(function(company) { %>
                                         <tr>
-                                            <td style="font-weight:500;"><%= company.name %></td>
-                                            <td><%= company.email || 'N/A' %></td>
-                                            <td style="font-family:monospace;font-size:1.05em;"><%= company.phone || 'N/A' %></td>
-                                            <td>
+                                            <td style="font-weight:500;max-width:180px;word-break:break-word;"><%= company.name %></td>
+                                            <td style="max-width:180px;word-break:break-word;"><%= company.email || 'N/A' %></td>
+                                            <td style="font-family:monospace;font-size:1.05em;max-width:120px;word-break:break-word;"><%= company.phone || 'N/A' %></td>
+                                            <td style="max-width:180px;word-break:break-word;">
                                                 <% if (company.website) { %>
-                                                    <a href="<%= company.website %>" target="_blank">
+                                                    <a href="<%= company.website %>" target="_blank" style="max-width:160px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;">
                                                         <%= company.website.length > 30 ? company.website.substring(0, 27) + '...' : company.website %>
                                                     </a>
                                                 <% } else { %>
@@ -54,20 +55,21 @@
                                             </td>
                                             <td>
                                                 <% if (!(user && user.role === 'team_member')) { %>
-                                                <form action="/groups/<%= group.id %>/remove-company" method="POST" style="display:inline;">
-                                                    <input type="hidden" name="company_id" value="<%= company.id %>" />
-                                                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                                                </form>
+                                                    <form action="/groups/<%= group.id %>/remove-company" method="POST" style="display:inline;">
+                                                        <input type="hidden" name="company_id" value="<%= company.id %>" />
+                                                        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                                    </form>
                                                 <% } %>
                                             </td>
                                         </tr>
                                     <% }) %>
                                 </tbody>
                             </table>
-                        <% } else { %>
-                            <span style="color:#aaa;">No companies in this group.</span>
-                        <% } %>
-                    </div>
+                        </div>
+                    <% } else { %>
+                        <span style="color:#aaa;">No companies in this group.</span>
+                    <% } %>
+                </div>
                     <% if (!(user && user.role === 'team_member')) { %>
                     <form action="/groups/<%= group.id %>/add-companies" method="POST" style="margin-bottom:1.2rem;display:flex;gap:0.5rem;align-items:center;">
                         <select name="company_ids" class="form-control" multiple required style="min-width:180px;max-height:120px;overflow-y:auto;">
@@ -119,5 +121,22 @@
 .table th, .table td {
     padding: 0.7em 0.5em;
     word-break: break-word;
+}
+@media (max-width: 768px) {
+    .group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5em;
+    }
+    .group-body {
+        padding: 1em;
+    }
+    .table-container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .table {
+        font-size: 0.95em;
+    }
 }
 </style>

@@ -6,20 +6,35 @@
       <h2>Sales Data Builder</h2>
     </div>
     <h3 class="login-title">Sign in to your account</h3>
-    <form action="/auth/login" method="POST">
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" class="form-control" required>
+    <form method="POST" action="/auth/login" style="max-width:400px;margin:2em auto 0 auto;display:flex;flex-direction:column;gap:1em;padding:1em;">
+      <div class="form-group" style="width:100%;">
+        <label for="email">Email</label>
+        <input type="email" name="email" id="email" class="form-control" required style="width:100%;">
       </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" required>
+      <div class="form-group" style="width:100%;">
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" class="form-control" required style="width:100%;">
       </div>
       <% if (error) { %>
         <div class="status-badge status-error"><%= error %></div>
       <% } %>
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Sign in</button>
+      <button type="submit" class="btn btn-primary" style="width:100%;max-width:320px;align-self:center;">Sign in</button>
     </form>
+<style>
+@media (max-width: 600px) {
+  form[action="/auth/login"] {
+    padding: 0.5em !important;
+    gap: 0.7em !important;
+  }
+  .form-group label, .form-group input {
+    font-size: 1em !important;
+  }
+  .btn-primary {
+    font-size: 1em !important;
+    padding: 0.7em 1em !important;
+  }
+}
+</style>
     <div style="margin-top:2rem; text-align:center;">
       <div style="font-size:1rem; color:var(--gray-700); margin-bottom:0.5rem;">Demo Users (password: <b>password</b>):</div>
       <div style="font-size:0.95rem; color:var(--gray-600);">

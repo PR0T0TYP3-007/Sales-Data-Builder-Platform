@@ -6,9 +6,24 @@
     <div class="upload-area" id="upload-area">
         <div class="upload-icon"><i class="fas fa-upload"></i></div>
     <h3>Drag & drop PDF, CSV, or Excel files here</h3>
-        <input type="file" id="file-input" name="companyFile" style="display:none;" accept=".pdf,.csv,.xlsx,.xls">
+                    <input type="file" id="file-input" name="companyFile" style="display:none;width:100%;" accept=".pdf,.csv,.xlsx,.xls">
     </div>
-</form>
+    <!-- Only show drag & drop area, no extra file input or button -->
+<style>
+@media (max-width: 600px) {
+    form[action="#"] {
+        padding: 0.5em !important;
+        gap: 0.7em !important;
+    }
+    .form-group label, .form-group input {
+        font-size: 1em !important;
+    }
+    .btn-primary {
+        font-size: 1em !important;
+        padding: 0.7em 1em !important;
+    }
+}
+</style>
 <div class="file-list" id="file-list">
     <% if (preview && preview.length) { %>
         <h4 style="margin-bottom:1.2rem; color: var(--primary); font-weight:600; font-size:1.2rem;">Preview Extracted Companies</h4>

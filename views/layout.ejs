@@ -54,10 +54,13 @@
 </head>
 <body class="role-<%= user && user.role ? user.role : '' %>">
   <% if (user) { %>
-      <%- include('partials/sidebar') %>
-    <% } %>
+    <div class="menu-toggle" id="menu-toggle" style="display:none;">
+      <i class="fas fa-bars"></i>
+    </div>
+    <%- include('partials/sidebar') %>
+  <% } %>
   <div class="main-content">
-    <% if (typeof error !== 'undefined' && error) { %>
+  <% if (typeof error !== 'undefined' && error) { %>
       <div class="status-badge status-error" style="margin-bottom:1rem;"><%= error %></div>
     <% } %>
     <%- body %>
@@ -66,5 +69,28 @@
     <% if (typeof extraJS !== 'undefined') { %>
       <%= extraJS %>
     <% } %>
+<script>
+  // Sidebar toggle for mobile
+  document.addEventListener('DOMContentLoaded', function() {
+    var menuToggle = document.getElementById('menu-toggle');
+    var sidebar = document.querySelector('.sidebar');
+    if (menuToggle && sidebar) {
+      function updateToggleVisibility() {
+        if (window.innerWidth <= 768) {
+          menuToggle.style.display = 'block';
+          sidebar.classList.remove('open');
+        } else {
+          menuToggle.style.display = 'none';
+          sidebar.classList.add('open');
+        }
+      }
+      updateToggleVisibility();
+      window.addEventListener('resize', updateToggleVisibility);
+      menuToggle.addEventListener('click', function() {
+        sidebar.classList.toggle('open');
+      });
+    }
+  });
+</script>
 </body>
 </html>

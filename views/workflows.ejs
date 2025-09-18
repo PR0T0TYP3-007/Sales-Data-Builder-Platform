@@ -7,33 +7,52 @@
     </div>
     <% } %>
 </div>
-<div class="workflow-builder">
+<div class="workflow-builder" style="display:flex;flex-wrap:wrap;gap:1.5em;justify-content:center;">
     <% workflows.forEach(function(wf) { %>
-        <div class="card">
-            <div class="card-header"><%= wf.name %></div>
-            <div class="card-body">
-                <ol>
+        <div class="card" style="width:100%;margin-bottom:1.5em;">
+            <div class="card-header" style="font-size:1.2em;font-weight:600;padding:1em 1.2em;background:#f8f9fa;border-radius:8px 8px 0 0;"> <%= wf.name %> </div>
+            <div class="card-body" style="background:#fff;padding:1.2em;border-radius:0 0 8px 8px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                <ol style="padding-left:1.2em;">
                     <% wf.steps.forEach(function(step, idx) { %>
-                        <li>
+                        <li style="margin-bottom:0.7em;">
                             <strong>Step <%= idx+1 %>:</strong> <%= step.type %> (Delay: <%= step.delay_days %> days, Role: <%= step.role %>)<br>
                             <em>Template:</em> <%= step.template %>
                         </li>
                     <% }) %>
                 </ol>
-                                <% if (user && user.role !== 'team_member') { %>
-                                <a href="/workflows/<%= wf.id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
-                                <form action="/workflows/<%= wf.id %>/delete" method="POST" style="display:inline;margin-left:0.5em;">
-                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this workflow?');">Delete</button>
-                                </form>
-                                <% } %>
-<% if (user && user.role === 'team_member') { %>
-<style>
-    .btn, form[action*="delete"], a[href*="edit"], .header-actions {
-        display: none !important;
-    }
-</style>
-<% } %>
+                <% if (user && user.role !== 'team_member') { %>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.7em;margin-top:1em;">
+                        <a href="/workflows/<%= wf.id %>/edit" class="btn btn-sm btn-secondary">Edit</a>
+                        <form action="/workflows/<%= wf.id %>/delete" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this workflow?');">Delete</button>
+                        </form>
+                    </div>
+                <% } %>
+                <% if (user && user.role === 'team_member') { %>
+                <style>
+                    .btn, form[action*="delete"], a[href*="edit"], .header-actions {
+                        display: none !important;
+                    }
+                </style>
+                <% } %>
             </div>
         </div>
     <% }) %>
 </div>
+<style>
+@media (max-width: 768px) {
+    .workflow-builder {
+        flex-direction: column;
+        gap: 1em;
+    }
+    .card {
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .card-header, .card-body {
+        padding: 1em !important;
+    }
+}
+</style>

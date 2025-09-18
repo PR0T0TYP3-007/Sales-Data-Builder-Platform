@@ -5,7 +5,7 @@
         <a href="/upload" class="btn btn-primary"><i class="fas fa-upload btn-icon"></i>Upload Companies</a>
     </div>
 </div>
-<div class="stats-grid">
+<div class="stats-grid" style="width:100%;max-width:100vw;">
     <div class="stat-card">
         <div class="stat-value"><%= stats.percentEnriched %>%</div>
         <div class="stat-label">Enriched</div>
@@ -32,12 +32,12 @@
         <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
     </div>
 </div>
-<div class="card">
+<div class="card" style="width:100%;max-width:100vw;overflow-x:auto;">
     <div class="card-header">Recent Activity</div>
     <div class="card-body">
         <% if (activity && activity.length) { %>
             <% activity.slice(0,5).forEach(function(item) { %>
-                <div class="activity-item">
+                <div class="activity-item" style="flex-wrap:wrap;">
                     <div class="activity-icon"><i class="fas fa-clipboard-list"></i></div>
                     <div>
                         <div class="activity-title"><%= item.action %> <%= item.entity ? 'on ' + item.entity : '' %></div>
@@ -49,7 +49,7 @@
             <div>No recent activity.</div>
         <% } %>
         <% if (typeof lastEnrichment !== 'undefined' && lastEnrichment) { %>
-            <div class="activity-item" style="margin-top:1em;background:#f8f9fa;border-radius:6px;padding:0.7em 1em;">
+            <div class="activity-item" style="margin-top:1em;background:#f8f9fa;border-radius:6px;padding:0.7em 1em;flex-wrap:wrap;">
                 <div class="activity-icon"><i class="fas fa-magic"></i></div>
                 <div>
                     <div class="activity-title">Last Enrichment: <%= lastEnrichment.date %></div>
